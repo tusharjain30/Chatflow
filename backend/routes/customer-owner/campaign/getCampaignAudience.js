@@ -13,8 +13,9 @@ router.get("/", async (req, res) => {
 
     const { accountId } = req.auth;
 
-    page = parseInt(page);
-    limit = parseInt(limit);
+    page = Math.max(parseInt(page, 10) || 1, 1);
+    limit = Math.min(Math.max(parseInt(limit, 10) || 10, 1), 100);
+    search = search?.trim();
 
     const skip = (page - 1) * limit;
 
@@ -56,6 +57,12 @@ router.get("/", async (req, res) => {
             },
           },
           {
+            lastName: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+          {
             phone: {
               contains: search,
             },
@@ -80,8 +87,6 @@ router.get("/", async (req, res) => {
               firstName: true,
               lastName: true,
               phone: true,
-
-              // GROUPS INCLUDE
               contactGroupMap: {
                 select: {
                   group: {
@@ -103,34 +108,24 @@ router.get("/", async (req, res) => {
     // =========================
     // Format Response
     // =========================
-    const formatted = audiences.map((a) => ({
-      id: a.id,
-      contactId: a.contactId,
-
-      name: `${a.contact?.firstName || ""} ${a.contact?.lastName || ""}`.trim(),
-
-      phone: a.contact?.phone,
-
-      // GROUPS
+    const formatted = audiences.map((audience) => ({
+      id: audience.id,
+      contactId: audience.contactId,
+      name: `${audience.contact?.firstName || ""} ${audience.contact?.lastName || ""}`.trim(),
+      phone: audience.contact?.phone,
       groups:
-        a.contact?.contactGroupMap?.map((g) => ({
-          id: g.group.id,
-          name: g.group.name,
+        audience.contact?.contactGroupMap?.map((groupMap) => ({
+          id: groupMap.group.id,
+          name: groupMap.group.name,
         })) || [],
-
-      status: a.status,
-
-      sentAt: a.sentAt,
-      deliveredAt: a.deliveredAt,
-      readAt: a.readAt,
-      failedAt: a.failedAt,
-
-      errorMessage: a.errorMessage,
+      status: audience.status,
+      sentAt: audience.sentAt,
+      deliveredAt: audience.deliveredAt,
+      readAt: audience.readAt,
+      failedAt: audience.failedAt,
+      errorMessage: audience.errorMessage,
     }));
 
-    // =========================
-    // Response
-    // =========================
     return res.status(RESPONSE_CODES.GET).json({
       status: 1,
       message: "Campaign audience fetched successfully",

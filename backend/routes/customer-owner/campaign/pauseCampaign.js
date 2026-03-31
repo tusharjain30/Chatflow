@@ -82,6 +82,14 @@ router.post("/", async (req, res) => {
       },
     });
 
+    await prisma.campaignLog.create({
+      data: {
+        campaignId,
+        type: "INFO",
+        message: "Campaign paused by user",
+      },
+    });
+
     return res.status(RESPONSE_CODES.GET).json({
       status: 1,
       message: "Campaign paused successfully",

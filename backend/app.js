@@ -11,7 +11,7 @@ const userRouter = require("./routes/customer-owner");
 // Connect frontend
 app.use(
   cors({
-    origin: ["http://localhost:8080"],
+    origin: [process.env.FRONTEND_URL],
     credentials: true,
   })
 );

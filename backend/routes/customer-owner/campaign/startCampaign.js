@@ -18,6 +18,7 @@ router.post("/", async (req, res) => {
       where: {
         id: campaignId,
         accountId,
+        isDeleted: false,
       },
     });
 
@@ -51,6 +52,42 @@ router.post("/", async (req, res) => {
       });
     }
 
+    if (campaign.status === "PAUSED") {
+      return res.status(RESPONSE_CODES.BAD_REQUEST).json({
+        status: 0,
+        message: "Paused campaign must be resumed, not started again",
+        statusCode: RESPONSE_CODES.BAD_REQUEST,
+        data: {},
+      });
+    }
+
+    if (campaign.status === "CANCELLED") {
+      return res.status(RESPONSE_CODES.BAD_REQUEST).json({
+        status: 0,
+        message: "Cancelled campaign cannot be started",
+        statusCode: RESPONSE_CODES.BAD_REQUEST,
+        data: {},
+      });
+    }
+
+    if (campaign.status === "FAILED") {
+      return res.status(RESPONSE_CODES.BAD_REQUEST).json({
+        status: 0,
+        message: "Failed campaign cannot be started again directly",
+        statusCode: RESPONSE_CODES.BAD_REQUEST,
+        data: {},
+      });
+    }
+
+    if (!["DRAFT", "SCHEDULED"].includes(campaign.status)) {
+      return res.status(RESPONSE_CODES.BAD_REQUEST).json({
+        status: 0,
+        message: "Campaign cannot be started in its current status",
+        statusCode: RESPONSE_CODES.BAD_REQUEST,
+        data: {},
+      });
+    }
+
     // =========================
     // Check Audience
     // =========================
@@ -71,50 +108,51 @@ router.post("/", async (req, res) => {
     // Batch Calculation
     // =========================
     const batchSize = campaign.batchSize || 50;
-
     const totalBatches = Math.ceil(audienceCount / batchSize);
 
-    // =========================
-    // Create Jobs (Batch-wise)
-    // =========================
     const jobs = [];
 
     for (let i = 0; i < totalBatches; i++) {
+      const remaining = audienceCount - i * batchSize;
+
       jobs.push({
         campaignId,
         batchNumber: i + 1,
-        totalRecords: batchSize,
+        totalRecords: Math.min(batchSize, remaining),
         status: "PENDING",
       });
     }
 
-    await prisma.campaignJob.createMany({
-      data: jobs,
+    await prisma.$transaction(async (tx) => {
+      await tx.campaignJob.deleteMany({
+        where: {
+          campaignId,
+        },
+      });
+
+      await tx.campaignJob.createMany({
+        data: jobs,
+      });
+
+      await tx.campaign.update({
+        where: { id: campaignId },
+        data: {
+          status: "RUNNING",
+          startedAt: new Date(),
+          completedAt: null,
+        },
+      });
+
+      await tx.campaignLog.create({
+        data: {
+          campaignId,
+          type: "INFO",
+          message: `Campaign started with ${audienceCount} contacts in ${totalBatches} batches`,
+        },
+      });
     });
 
-    // =========================
-    // Update Campaign Status
-    // =========================
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: {
-        status: "RUNNING",
-        startedAt: new Date(),
-      },
-    });
-
-    // =========================
-    // Log Entry
-    // =========================
-    await prisma.campaignLog.create({
-      data: {
-        campaignId,
-        type: "INFO",
-        message: `Campaign started with ${audienceCount} contacts in ${totalBatches} batches`,
-      },
-    });
-
-    res.status(RESPONSE_CODES.POST).json({
+    return res.status(RESPONSE_CODES.POST).json({
       status: 1,
       message: "Campaign started successfully",
       statusCode: RESPONSE_CODES.POST,
@@ -126,7 +164,7 @@ router.post("/", async (req, res) => {
   } catch (error) {
     console.log("Start Campaign Error:", error);
 
-    res.status(RESPONSE_CODES.ERROR).json({
+    return res.status(RESPONSE_CODES.ERROR).json({
       status: 0,
       message: "Something went wrong",
       statusCode: RESPONSE_CODES.ERROR,

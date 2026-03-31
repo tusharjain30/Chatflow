@@ -43,9 +43,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Check Pending Audience
-    // =========================
     const pendingCount = await prisma.campaignAudience.count({
       where: {
         campaignId,
@@ -62,31 +59,38 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Update Campaign Status
-    // =========================
     await prisma.campaign.update({
       where: { id: campaignId },
       data: {
         status: "RUNNING",
         startedAt: campaign.startedAt || new Date(),
+        completedAt: null,
       },
     });
 
-    // =========================
-    // OPTIONAL: Immediate Trigger (basic loop)
-    // =========================
-    // ⚠️ only for small scale (no queue)
+    await prisma.campaignLog.create({
+      data: {
+        campaignId,
+        type: "INFO",
+        message: `Campaign resumed with ${pendingCount} pending contacts`,
+      },
+    });
+
+    // Simple background loop until queue worker is introduced.
     setImmediate(async () => {
       try {
         const batchSize = campaign.batchSize || 50;
+        const delayInSeconds = campaign.delayInSeconds || 2;
 
         while (true) {
           const latest = await prisma.campaign.findUnique({
             where: { id: campaignId },
+            select: { status: true },
           });
 
-          if (!latest || latest.status !== "RUNNING") break;
+          if (!latest || latest.status !== "RUNNING") {
+            return;
+          }
 
           const audiences = await prisma.campaignAudience.findMany({
             where: {
@@ -99,15 +103,46 @@ router.post("/", async (req, res) => {
             },
           });
 
-          if (!audiences.length) break;
+          if (!audiences.length) {
+            const remainingPending = await prisma.campaignAudience.count({
+              where: {
+                campaignId,
+                status: "PENDING",
+              },
+            });
 
-          for (const a of audiences) {
+            const finalCampaign = await prisma.campaign.findUnique({
+              where: { id: campaignId },
+              select: { status: true },
+            });
+
+            if (remainingPending === 0 && finalCampaign?.status === "RUNNING") {
+              await prisma.campaign.update({
+                where: { id: campaignId },
+                data: {
+                  status: "COMPLETED",
+                  completedAt: new Date(),
+                },
+              });
+
+              await prisma.campaignLog.create({
+                data: {
+                  campaignId,
+                  type: "INFO",
+                  message: "Campaign completed after resume",
+                },
+              });
+            }
+
+            return;
+          }
+
+          for (const audience of audiences) {
             try {
-              // 👉 Yahan WhatsApp send logic aayega
-              console.log("Sending to:", a.contact.phone);
+              console.log("Sending to:", audience.contact.phone);
 
               await prisma.campaignAudience.update({
-                where: { id: a.id },
+                where: { id: audience.id },
                 data: {
                   status: "SENT",
                   sentAt: new Date(),
@@ -115,7 +150,7 @@ router.post("/", async (req, res) => {
               });
             } catch (err) {
               await prisma.campaignAudience.update({
-                where: { id: a.id },
+                where: { id: audience.id },
                 data: {
                   status: "FAILED",
                   errorMessage: err.message,
@@ -125,22 +160,27 @@ router.post("/", async (req, res) => {
             }
           }
 
-          // delay
-          await new Promise((r) =>
-            setTimeout(r, campaign.delayInSeconds * 1000)
+          await new Promise((resolve) =>
+            setTimeout(resolve, delayInSeconds * 1000)
           );
         }
+      } catch (err) {
+        console.log("Background Resume Error:", err);
 
-        // mark completed
         await prisma.campaign.update({
           where: { id: campaignId },
           data: {
-            status: "COMPLETED",
-            completedAt: new Date(),
+            status: "FAILED",
           },
         });
-      } catch (err) {
-        console.log("Background Resume Error:", err);
+
+        await prisma.campaignLog.create({
+          data: {
+            campaignId,
+            type: "ERROR",
+            message: err.message || "Campaign resume failed",
+          },
+        });
       }
     });
 

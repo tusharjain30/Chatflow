@@ -18,6 +18,7 @@ router.get("/", async (req, res) => {
       where: {
         id,
         accountId,
+        isDeleted: false,
       },
       include: {
         template: {

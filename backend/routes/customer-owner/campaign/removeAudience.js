@@ -8,7 +8,7 @@ const RESPONSE_CODES = require("../../../config/responseCode");
 
 router.post("/", async (req, res) => {
   try {
-    const { campaignId, contactIds, groupIds } = req.body;
+    const { campaignId, contactIds = [], groupIds = [] } = req.body;
     const { accountId } = req.auth;
 
     // =========================
