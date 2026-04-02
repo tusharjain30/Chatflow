@@ -4,7 +4,7 @@ const path = require("path");
 const cors = require("cors");
 require("dotenv").config();
 
-const indexRouter = require("./routes");
+// const indexRouter = require("./routes");
 const adminRouter = require("./routes/super-admin");
 const userRouter = require("./routes/customer-owner");
 
@@ -24,7 +24,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use("/super-admin", adminRouter);
 app.use("/user", userRouter);
 
-app.use("/", (req, res) => {
+app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
