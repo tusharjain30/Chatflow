@@ -195,7 +195,7 @@ export default function Broadcasts() {
                 setOpen={setOpen}
                 onSuccess={() => {
                   fetchCampaigns();
-                  fetchStats(); // optional but recommended
+                  fetchStats();
                 }}
               />
             </div>

@@ -154,7 +154,6 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
         });
         onSuccess && onSuccess();
       }
-      
     } catch (err: any) {
       toast({
         title: "Error",
@@ -387,7 +386,7 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
               </p>
             ) : (
               templates
-                .filter((t: any) => t.status === "APPROVED") // ✅ important
+                .filter((t: any) => t.status === "APPROVED")
                 .map((t: any) => (
                   <div
                     key={t.id}
