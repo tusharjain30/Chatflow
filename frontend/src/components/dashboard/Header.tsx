@@ -1,4 +1,4 @@
-import { Bell, Search, Plus } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -7,35 +7,74 @@ import { capitalize } from "@/utils/Capitalize";
 
 export function Header() {
   const { user } = useAuth();
+
   return (
-    <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between sticky top-0 z-10">
-      <div className="flex items-center gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">Welcome back, {capitalize(user?.firstName)} 👋</p>
+    <header className="h-16 px-6 flex items-center justify-between sticky top-0 z-20 
+    backdrop-blur-xl bg-white/70 dark:bg-zinc-900/60 border-b border-border shadow-sm">
+
+      {/* LEFT SECTION */}
+      <div className="flex items-center gap-6">
+        
+        {/* Title + Welcome */}
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#19AA4E]">
+            Dashboard
+          </h1>
+
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            
+            {/* Avatar */}
+            {/* <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 
+            flex items-center justify-center text-white text-xs font-semibold shadow-sm ring-2 ring-white">
+              {user?.firstName?.charAt(0)?.toUpperCase()}
+            </div> */}
+
+            <span>
+              Welcome back,
+              <span className="ml-1 font-medium text-foreground">
+                {capitalize(user?.firstName)}
+              </span>
+            </span>
+
+            <span className="animate-wave">👋</span>
+          </div>
         </div>
+
+        {/* LIVE STATUS */}
+        {/* <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full 
+        bg-gradient-to-r from-emerald-100 to-green-200 text-green-800 text-xs font-medium shadow-sm">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+          Live
+        </div> */}
       </div>
 
+      {/* RIGHT SECTION */}
       <div className="flex items-center gap-3">
-        {/* Search */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+        {/* SEARCH */}
+        <div className="relative hidden md:block group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition" />
+
           <Input
-            placeholder="Search conversations..."
-            className="pl-10 w-64 bg-muted/50 border-transparent focus:border-primary focus:bg-background"
+            placeholder="Search..."
+            className="pl-10 w-64 rounded-full bg-muted/40 border border-transparent 
+            focus:border-primary focus:bg-white dark:focus:bg-zinc-900
+            transition-all duration-200 shadow-sm hover:shadow-md"
           />
         </div>
 
-        {/* New Broadcast Button */}
-        {/* <Button className="gradient-whatsapp text-primary-foreground gap-2 shadow-md hover:shadow-lg transition-shadow">
-          <Plus className="h-4 w-4" />
-          <span className="hidden sm:inline">New Broadcast</span>
-        </Button> */}
+        {/* NOTIFICATIONS */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative rounded-full hover:bg-muted/50 transition"
+        >
+          <Bell className="h-5 w-5 text-muted-foreground group-hover:text-foreground" />
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          <Badge className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center bg-destructive text-destructive-foreground text-xs p-0">
+          <Badge
+            className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center 
+            bg-red-500 text-white text-xs p-0 shadow-md animate-bounce"
+          >
             3
           </Badge>
         </Button>

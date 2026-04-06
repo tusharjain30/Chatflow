@@ -10,7 +10,7 @@ router.get("/", async (req, res) => {
   try {
     const { accountId } = req.auth;
 
-    let { page, limit, search, status } = req.validatedQuery;
+    let { page, limit, search, status, tab } = req.validatedQuery;
 
     page = parseInt(page);
     limit = parseInt(limit);
@@ -34,6 +34,23 @@ router.get("/", async (req, res) => {
 
     if (status) {
       where.status = status;
+    }
+
+    if (tab && tab !== "all") {
+      const tabStatusMap = {
+        active: ["RUNNING"],
+        scheduled: ["SCHEDULED"],
+        completed: ["COMPLETED"],
+        draft: ["DRAFT"],
+      };
+
+      const statuses = tabStatusMap[tab];
+
+      if (statuses?.length) {
+        where.status = {
+          in: statuses,
+        };
+      }
     }
 
     // =========================
@@ -66,20 +83,22 @@ router.get("/", async (req, res) => {
     ]);
 
     // =========================
-    // Format Response (UPDATED)
+    // Format Response
     // =========================
     const formatted = campaigns.map((c) => {
-      const total = c.totalContacts || 0;
+      const totalContacts = c.totalContacts || 0;
       const sent = c.sentCount || 0;
 
-      const progress = total ? Math.round((sent / total) * 100) : 0;
+      const progress = totalContacts
+        ? Math.round((sent / totalContacts) * 100)
+        : 0;
 
       return {
         id: c.id,
         name: c.name,
         status: c.status,
 
-        totalContacts: total,
+        totalContacts,
         audienceCount: c._count.audiences,
 
         sentCount: sent,
@@ -91,9 +110,14 @@ router.get("/", async (req, res) => {
 
         template: c.template,
 
+        isScheduled: c.isScheduled,
+        scheduledAt: c.scheduledAt,
+        startedAt: c.startedAt,
+        completedAt: c.completedAt,
         createdAt: c.createdAt,
       };
     });
+
     return res.status(RESPONSE_CODES.GET).json({
       status: 1,
       message: "Campaign list fetched successfully",
@@ -105,6 +129,10 @@ router.get("/", async (req, res) => {
           page,
           limit,
           totalPages: Math.ceil(total / limit),
+        },
+        filters: {
+          status: status || null,
+          tab: tab || "all",
         },
       },
     });

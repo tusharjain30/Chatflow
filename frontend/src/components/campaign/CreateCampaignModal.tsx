@@ -50,34 +50,35 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
       return false;
     }
 
-    // 🔥 ALWAYS REQUIRED (backend rule)
-    if (!form.scheduledAt) {
-      toast({
-        title: "Validation Error",
-        description: "Scheduled date & time is required",
-        variant: "destructive",
-      });
-      return false;
-    }
+    if (form.isScheduled) {
+      if (!form.scheduledAt) {
+        toast({
+          title: "Validation Error",
+          description: "Scheduled date & time is required",
+          variant: "destructive",
+        });
+        return false;
+      }
 
-    const selectedDate = new Date(form.scheduledAt);
+      const selectedDate = new Date(form.scheduledAt);
 
-    if (isNaN(selectedDate.getTime())) {
-      toast({
-        title: "Validation Error",
-        description: "Invalid date format",
-        variant: "destructive",
-      });
-      return false;
-    }
+      if (isNaN(selectedDate.getTime())) {
+        toast({
+          title: "Validation Error",
+          description: "Invalid date format",
+          variant: "destructive",
+        });
+        return false;
+      }
 
-    if (selectedDate <= new Date()) {
-      toast({
-        title: "Validation Error",
-        description: "Scheduled time must be in the future",
-        variant: "destructive",
-      });
-      return false;
+      if (selectedDate <= new Date()) {
+        toast({
+          title: "Validation Error",
+          description: "Scheduled time must be in the future",
+          variant: "destructive",
+        });
+        return false;
+      }
     }
 
     if (form.batchSize <= 0 || form.batchSize > 1000) {
@@ -118,8 +119,8 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
       const token = localStorage.getItem("auth_token");
       const payload = {
         ...form,
-        scheduledAt: new Date(form.scheduledAt).toISOString(),
-        isScheduled: form.isScheduled,
+        isScheduled: false,
+        scheduledAt: undefined,
       };
 
       const res = await axios.post(
@@ -292,7 +293,7 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
             <div>
               <Label>Schedule Campaign</Label>
               <p className="text-xs text-muted-foreground">
-                Enable to send campaign later
+                Campaign will be created as draft; you can schedule it after adding audience
               </p>
             </div>
             <Switch checked={form.isScheduled} onCheckedChange={handleSwitch} />
@@ -352,9 +353,7 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
 
           <Button
             onClick={handleSubmit}
-            disabled={
-              loading || !form.name || !selectedTemplate || !form.scheduledAt
-            }
+            disabled={loading || !form.name || !selectedTemplate}
           >
             {loading ? "Creating..." : "Create Campaign"}
           </Button>
@@ -558,3 +557,5 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
     </div>
   );
 }
+
+

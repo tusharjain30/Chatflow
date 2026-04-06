@@ -15,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import {
   CheckCircle,
   Clock,
@@ -33,6 +32,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Swal from "sweetalert2";
+import { FiBarChart2, FiCheckCircle, FiClock, FiLayers } from "react-icons/fi";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -354,37 +354,53 @@ export default function Templates() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+            {/* TOTAL */}
+            <Card className="group relative rounded-2xl p-4 bg-gradient-to-br from-blue-50 to-blue-100/60 border border-blue-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Total Templates
                 </CardTitle>
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600 group-hover:scale-110 transition">
+                  <FiLayers className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{templates.length}</div>
+                <div className="text-3xl font-bold text-blue-700">
+                  {templates.length}
+                </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
+
+            {/* APPROVED */}
+            <Card className="group relative rounded-2xl p-4 bg-gradient-to-br from-green-50 to-green-100/60 border border-green-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Approved
                 </CardTitle>
+                <div className="p-2 rounded-lg bg-green-100 text-green-600 group-hover:scale-110 transition">
+                  <FiCheckCircle className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-3xl font-bold text-green-700">
                   {templates.filter((t) => t.status === "approved").length}
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
+
+            {/* PENDING */}
+            <Card className="group relative rounded-2xl p-4 bg-gradient-to-br from-yellow-50 to-yellow-100/60 border border-yellow-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Pending
                 </CardTitle>
+                <div className="p-2 rounded-lg bg-yellow-100 text-yellow-600 group-hover:scale-110 transition">
+                  <FiClock className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="text-3xl font-bold text-yellow-700">
                   {
                     templates.filter(
                       (t) => t.status === "pending" || t.status === "draft",
@@ -393,14 +409,19 @@ export default function Templates() {
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
+
+            {/* USAGE */}
+            <Card className="group relative rounded-2xl p-4 bg-gradient-to-br from-purple-50 to-purple-100/60 border border-purple-100 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   Total Usage
                 </CardTitle>
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600 group-hover:scale-110 transition">
+                  <FiBarChart2 className="h-4 w-4" />
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-3xl font-bold text-purple-700">
                   {templates
                     .reduce((acc, t) => acc + t.usageCount, 0)
                     .toLocaleString()}
@@ -599,8 +620,6 @@ export default function Templates() {
               </div>
             </>
           )}
-
-          
         </div>
       </main>
     </div>

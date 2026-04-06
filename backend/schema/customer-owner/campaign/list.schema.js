@@ -5,6 +5,9 @@ const getCampaignsSchema = z.object({
   limit: z.string().optional().default("10"),
   search: z.string().optional(),
   status: z.string().optional(), // DRAFT, RUNNING, etc.
+  tab: z
+    .enum(["all", "active", "scheduled", "completed", "draft"])
+    .optional(),
 });
 
 module.exports = {

@@ -12,24 +12,19 @@ router.post("/", async (req, res) => {
       name,
       description,
       templateId,
-      isScheduled,
-      scheduledAt,
       batchSize,
       delayInSeconds,
     } = req.body;
 
     const { accountId, userId } = req.auth;
 
-    // =========================
-    // Validate Template
-    // =========================
     const template = await prisma.template.findFirst({
       where: {
         id: templateId,
         accountId,
         isDeleted: false,
         isActive: true,
-        status: "APPROVED", // important
+        status: "APPROVED",
       },
     });
 
@@ -42,44 +37,9 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Validate Schedule
-    // =========================
-    let finalScheduledAt = null;
-
-    if (isScheduled) {
-      if (!scheduledAt) {
-        return res.status(RESPONSE_CODES.BAD_REQUEST).json({
-          status: 0,
-          message: "scheduledAt is required when scheduling campaign",
-          statusCode: RESPONSE_CODES.BAD_REQUEST,
-          data: {},
-        });
-      }
-
-      const scheduleDate = new Date(scheduledAt);
-
-      if (scheduleDate <= new Date()) {
-        return res.status(RESPONSE_CODES.BAD_REQUEST).json({
-          status: 0,
-          message: "Scheduled time must be in the future",
-          statusCode: RESPONSE_CODES.BAD_REQUEST,
-          data: {},
-        });
-      }
-
-      finalScheduledAt = scheduleDate;
-    }
-
-    // =========================
-    // Validate Limits (Safety)
-    // =========================
     const safeBatchSize = Math.min(Math.max(batchSize || 50, 1), 100);
     const safeDelay = Math.min(Math.max(delayInSeconds || 2, 1), 60);
 
-    // =========================
-    // Prevent Duplicate Name (optional SaaS rule)
-    // =========================
     const existing = await prisma.campaign.findFirst({
       where: {
         name,
@@ -97,30 +57,21 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Create Campaign
-    // =========================
     const campaign = await prisma.campaign.create({
       data: {
         name,
         description,
         templateId,
         accountId,
-
-        isScheduled: isScheduled || false,
-        scheduledAt: finalScheduledAt,
-
+        isScheduled: false,
+        scheduledAt: null,
         batchSize: safeBatchSize,
         delayInSeconds: safeDelay,
-
         createdByUserId: userId,
-        status: isScheduled ? "SCHEDULED" : "DRAFT",
+        status: "DRAFT",
       },
     });
 
-    // =========================
-    // Log Entry
-    // =========================
     await prisma.campaignLog.create({
       data: {
         campaignId: campaign.id,
@@ -129,9 +80,6 @@ router.post("/", async (req, res) => {
       },
     });
 
-    // =========================
-    // Response (Safe)
-    // =========================
     return res.status(RESPONSE_CODES.POST).json({
       status: 1,
       message: "Campaign created successfully",

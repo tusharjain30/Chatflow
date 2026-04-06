@@ -627,35 +627,143 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
   const reminderTemplate = templatesByName.get("payment_reminder_template");
   const hotLeadsGroup = groupsByTitle.get("Hot Leads");
   const reEngagementGroup = groupsByTitle.get("Re-engagement");
+  const existingCustomersGroup = groupsByTitle.get("Existing Customers");
+
+  const contactsByPhone = new Map(contacts.map((contact) => [contact.phone, contact]));
+
+  const getContactIds = (phones = []) =>
+    phones
+      .map((phone) => contactsByPhone.get(phone)?.id)
+      .filter(Boolean);
+
+  const metricsFromAudienceStatuses = (audienceStatuses = []) => ({
+    totalContacts: audienceStatuses.length,
+    sentCount: audienceStatuses.filter((status) =>
+      ["SENT", "DELIVERED", "READ", "FAILED"].includes(status),
+    ).length,
+    deliveredCount: audienceStatuses.filter((status) =>
+      ["DELIVERED", "READ"].includes(status),
+    ).length,
+    readCount: audienceStatuses.filter((status) => status === "READ").length,
+    failedCount: audienceStatuses.filter((status) => status === "FAILED").length,
+  });
 
   const campaignDefinitions = [
     {
-      name: "April Welcome Drive",
-      description: "Welcome campaign for new and high-intent leads.",
+      name: "April Welcome Draft",
+      description: "Draft welcome campaign ready for audience curation.",
       templateId: welcomeTemplate?.id,
       isScheduled: false,
       scheduledAt: null,
+      startedAt: null,
+      completedAt: null,
       batchSize: 25,
       delayInSeconds: 3,
       status: "DRAFT",
-      logMessage: "Campaign created from seed data",
-      audienceContactIds: contacts
-        .filter((contact) =>
-          ["919810000001", "919810000004"].includes(contact.phone),
-        )
-        .map((contact) => contact.id),
+      logMessage: "Draft campaign created from seed data",
+      audienceContactIds: getContactIds(["919810000001", "919810000004", "919810000005"]),
+      audienceStatuses: ["PENDING", "PENDING", "PENDING"],
     },
     {
-      name: "Payment Reminder Wave",
+      name: "Payment Reminder Scheduled",
       description: "Scheduled reminders for customers with pending dues.",
       templateId: reminderTemplate?.id,
       isScheduled: true,
       scheduledAt: new Date("2026-04-10T10:00:00.000Z"),
+      startedAt: null,
+      completedAt: null,
       batchSize: 20,
       delayInSeconds: 5,
       status: "SCHEDULED",
-      logMessage: "Campaign scheduled from seed data",
+      logMessage: "Scheduled campaign created from seed data",
       audienceGroupId: reEngagementGroup?.id || hotLeadsGroup?.id || null,
+      audienceStatuses: ["PENDING", "PENDING"],
+    },
+    {
+      name: "Hot Leads Live Run",
+      description: "Active campaign currently processing hot leads.",
+      templateId: welcomeTemplate?.id,
+      isScheduled: false,
+      scheduledAt: null,
+      startedAt: new Date("2026-04-04T09:00:00.000Z"),
+      completedAt: null,
+      batchSize: 15,
+      delayInSeconds: 2,
+      status: "RUNNING",
+      logMessage: "Running campaign created from seed data",
+      audienceContactIds: getContactIds([
+        "919810000001",
+        "919810000002",
+        "919810000003",
+        "919810000004",
+        "919810000005",
+      ]),
+      audienceStatuses: ["READ", "DELIVERED", "SENT", "FAILED", "PENDING"],
+    },
+    {
+      name: "Existing Customers Paused",
+      description: "Paused campaign with pending audience left to resume.",
+      templateId: reminderTemplate?.id,
+      isScheduled: false,
+      scheduledAt: null,
+      startedAt: new Date("2026-04-03T07:30:00.000Z"),
+      completedAt: null,
+      batchSize: 10,
+      delayInSeconds: 4,
+      status: "PAUSED",
+      logMessage: "Paused campaign created from seed data",
+      audienceGroupId: existingCustomersGroup?.id || hotLeadsGroup?.id || null,
+      audienceStatuses: ["READ", "DELIVERED", "PENDING"],
+    },
+    {
+      name: "March Closure Broadcast",
+      description: "Completed campaign sent to all selected contacts.",
+      templateId: welcomeTemplate?.id,
+      isScheduled: false,
+      scheduledAt: null,
+      startedAt: new Date("2026-03-28T06:30:00.000Z"),
+      completedAt: new Date("2026-03-28T08:00:00.000Z"),
+      batchSize: 30,
+      delayInSeconds: 2,
+      status: "COMPLETED",
+      logMessage: "Completed campaign created from seed data",
+      audienceContactIds: getContactIds([
+        "919810000001",
+        "919810000002",
+        "919810000003",
+        "919810000004",
+      ]),
+      audienceStatuses: ["READ", "READ", "DELIVERED", "FAILED"],
+    },
+    {
+      name: "Dormant User Recovery Failed",
+      description: "Campaign failed after delivery issues during recovery attempts.",
+      templateId: reminderTemplate?.id,
+      isScheduled: false,
+      scheduledAt: null,
+      startedAt: new Date("2026-03-25T05:00:00.000Z"),
+      completedAt: new Date("2026-03-25T05:45:00.000Z"),
+      batchSize: 12,
+      delayInSeconds: 6,
+      status: "FAILED",
+      logMessage: "Failed campaign created from seed data",
+      audienceContactIds: getContactIds(["919810000003", "919810000005"]),
+      audienceStatuses: ["FAILED", "FAILED"],
+    },
+    {
+      name: "Cancelled Follow-up Blast",
+      description: "Campaign cancelled before all queued audience could be reached.",
+      templateId: welcomeTemplate?.id,
+      isScheduled: false,
+      scheduledAt: null,
+      startedAt: new Date("2026-04-02T08:15:00.000Z"),
+      completedAt: null,
+      batchSize: 10,
+      delayInSeconds: 3,
+      status: "CANCELLED",
+      logMessage: "Cancelled campaign created from seed data",
+      audienceContactIds: getContactIds(["919810000001", "919810000002", "919810000004"]),
+      audienceStatuses: ["READ", "SENT", "PENDING"],
     },
   ];
 
@@ -672,6 +780,8 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       },
     });
 
+    const audienceMetrics = metricsFromAudienceStatuses(campaignDef.audienceStatuses || []);
+
     const campaign = existing
       ? await prisma.campaign.update({
           where: { id: existing.id },
@@ -680,9 +790,16 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
             templateId: campaignDef.templateId,
             isScheduled: campaignDef.isScheduled,
             scheduledAt: campaignDef.scheduledAt,
+            startedAt: campaignDef.startedAt,
+            completedAt: campaignDef.completedAt,
             batchSize: campaignDef.batchSize,
             delayInSeconds: campaignDef.delayInSeconds,
             status: campaignDef.status,
+            totalContacts: audienceMetrics.totalContacts,
+            sentCount: audienceMetrics.sentCount,
+            deliveredCount: audienceMetrics.deliveredCount,
+            readCount: audienceMetrics.readCount,
+            failedCount: audienceMetrics.failedCount,
             createdByUserId: ownerId,
             isDeleted: false,
           },
@@ -695,9 +812,16 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
             templateId: campaignDef.templateId,
             isScheduled: campaignDef.isScheduled,
             scheduledAt: campaignDef.scheduledAt,
+            startedAt: campaignDef.startedAt,
+            completedAt: campaignDef.completedAt,
             batchSize: campaignDef.batchSize,
             delayInSeconds: campaignDef.delayInSeconds,
             status: campaignDef.status,
+            totalContacts: audienceMetrics.totalContacts,
+            sentCount: audienceMetrics.sentCount,
+            deliveredCount: audienceMetrics.deliveredCount,
+            readCount: audienceMetrics.readCount,
+            failedCount: audienceMetrics.failedCount,
             createdByUserId: ownerId,
             isDeleted: false,
           },
@@ -726,42 +850,60 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
     }
 
     const uniqueAudienceContactIds = [...new Set(audienceContactIds)];
+    const audienceStatuses = campaignDef.audienceStatuses || [];
 
     if (uniqueAudienceContactIds.length) {
       await prisma.campaignAudience.createMany({
-        data: uniqueAudienceContactIds.map((contactId) => ({
-          campaignId: campaign.id,
-          contactId,
-          status: "PENDING",
-        })),
+        data: uniqueAudienceContactIds.map((contactId, index) => {
+          const status = audienceStatuses[index] || "PENDING";
+          const baseTime = campaignDef.startedAt || campaignDef.scheduledAt || new Date();
+          const sentAt = ["SENT", "DELIVERED", "READ", "FAILED"].includes(status)
+            ? new Date(baseTime.getTime() + index * 60000)
+            : null;
+          const deliveredAt = ["DELIVERED", "READ"].includes(status)
+            ? new Date(baseTime.getTime() + index * 60000 + 30000)
+            : null;
+          const readAt = status === "READ"
+            ? new Date(baseTime.getTime() + index * 60000 + 60000)
+            : null;
+          const failedAt = status === "FAILED"
+            ? new Date(baseTime.getTime() + index * 60000 + 45000)
+            : null;
+
+          return {
+            campaignId: campaign.id,
+            contactId,
+            status,
+            sentAt,
+            deliveredAt,
+            readAt,
+            failedAt,
+            errorMessage: status === "FAILED" ? "Seeded delivery failure" : null,
+          };
+        }),
       });
     }
 
-    const totalContacts = uniqueAudienceContactIds.length;
-
-    await prisma.campaign.update({
-      where: { id: campaign.id },
-      data: {
-        totalContacts,
-      },
-    });
-
-    const existingLog = await prisma.campaignLog.findFirst({
+    await prisma.campaignLog.deleteMany({
       where: {
         campaignId: campaign.id,
-        message: campaignDef.logMessage,
       },
     });
 
-    if (!existingLog) {
-      await prisma.campaignLog.create({
-        data: {
+    await prisma.campaignLog.createMany({
+      data: [
+        {
           campaignId: campaign.id,
           type: "INFO",
           message: campaignDef.logMessage,
         },
-      });
-    }
+        {
+          campaignId: campaign.id,
+          type: campaignDef.status === "FAILED" ? "ERROR" : "INFO",
+          message: `Campaign seeded with ${campaignDef.status.toLowerCase()} status`,
+        },
+      ],
+    });
   }
 }
 
@@ -801,3 +943,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

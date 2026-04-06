@@ -19,9 +19,6 @@ router.get("/", async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    // =========================
-    // Validate Campaign
-    // =========================
     const campaign = await prisma.campaign.findFirst({
       where: {
         id,
@@ -39,9 +36,6 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Filters
-    // =========================
     const where = {
       campaignId: id,
       campaign: { accountId },
@@ -71,9 +65,6 @@ router.get("/", async (req, res) => {
       };
     }
 
-    // =========================
-    // Fetch Data (WITH GROUPS)
-    // =========================
     const [audiences, total] = await Promise.all([
       prisma.campaignAudience.findMany({
         where,
@@ -87,12 +78,12 @@ router.get("/", async (req, res) => {
               firstName: true,
               lastName: true,
               phone: true,
-              contactGroupMap: {
+              groups: {
                 select: {
                   group: {
                     select: {
                       id: true,
-                      name: true,
+                      title: true,
                     },
                   },
                 },
@@ -101,22 +92,18 @@ router.get("/", async (req, res) => {
           },
         },
       }),
-
       prisma.campaignAudience.count({ where }),
     ]);
 
-    // =========================
-    // Format Response
-    // =========================
     const formatted = audiences.map((audience) => ({
       id: audience.id,
       contactId: audience.contactId,
       name: `${audience.contact?.firstName || ""} ${audience.contact?.lastName || ""}`.trim(),
       phone: audience.contact?.phone,
       groups:
-        audience.contact?.contactGroupMap?.map((groupMap) => ({
+        audience.contact?.groups?.map((groupMap) => ({
           id: groupMap.group.id,
-          name: groupMap.group.name,
+          name: groupMap.group.title,
         })) || [],
       status: audience.status,
       sentAt: audience.sentAt,
