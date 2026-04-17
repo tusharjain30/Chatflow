@@ -11,26 +11,30 @@ const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 /* ================= TYPES ================= */
 
 export type Role = {
-  id: number;
+  id: string;
   name: string;
   roleType: string;
 };
 
 export type Account = {
-  id: number;
+  id: string;
   companyName: string;
 };
 
 export type User = {
-  id: number;
+  id: string;
   firstName: string;
   lastName: string;
-  userName: string;
+  userName?: string;
   email: string;
   phone: string;
-  image: string | null;
-  role: Role;
-  account: Account;
+  image?: string | null;
+  role?: Role;
+  account?: Account;
+  userType: string;
+  companyName?: string;
+  commissionRate?: number;
+  balance?: number;
 };
 
 /* ================= CONTEXT TYPE ================= */
@@ -40,6 +44,7 @@ type AuthContextType = {
   loading: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isReseller: boolean;
   logout: () => void;
   refetchProfile: () => Promise<void>;
 };
@@ -57,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   /* ========== FETCH PROFILE ========== */
   const fetchProfile = useCallback(async () => {
     const token = localStorage.getItem("auth_token");
+    const portal = localStorage.getItem("auth_portal") || "user";
 
     if (!token) {
       setUser(null);
@@ -65,7 +71,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/user/profile/me`, {
+      const profileUrl =
+        portal === "reseller"
+          ? `${API_BASE}/reseller/profile/me`
+          : `${API_BASE}/user/profile/me`;
+
+      const res = await fetch(profileUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -95,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
+    localStorage.removeItem("auth_portal");
     setUser(null);
   }, []);
 
@@ -104,7 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isAuthenticated: !!user,
-        isAdmin: user?.role?.roleType === "ADMIN",
+        isAdmin: user?.userType === "ADMIN",
+        isReseller: user?.userType === "RESELLER",
         logout,
         refetchProfile: fetchProfile,
       }}

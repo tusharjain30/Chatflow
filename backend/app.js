@@ -7,6 +7,7 @@ require("dotenv").config();
 // const indexRouter = require("./routes");
 const adminRouter = require("./routes/super-admin");
 const userRouter = require("./routes/customer-owner");
+const resellerRouter = require("./routes/reseller");
 
 // Connect frontend
 app.use(
@@ -23,6 +24,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // app.use("/", indexRouter);
 app.use("/super-admin", adminRouter);
 app.use("/user", userRouter);
+app.use("/reseller", resellerRouter);
 
 app.get("/", (req, res) => {
   res.send(`

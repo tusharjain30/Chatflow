@@ -80,6 +80,7 @@ export default function Login() {
 
       // Save token in session
       localStorage.setItem("auth_token", json.data.token);
+      localStorage.setItem("auth_portal", "user");
 
       toast({
         title: "Login successful 🎉",
@@ -196,6 +197,16 @@ export default function Login() {
                 className="text-primary hover:underline font-medium"
               >
                 Sign up
+              </Link>
+            </p>
+
+            <p className="mt-3 text-center text-sm text-muted-foreground">
+              Need partner access?{" "}
+              <Link
+                to="/reseller/login"
+                className="text-primary hover:underline font-medium"
+              >
+                Open reseller panel
               </Link>
             </p>
           </CardContent>

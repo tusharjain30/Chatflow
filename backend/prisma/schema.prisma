@@ -131,6 +131,8 @@ model User {
 model CustomerAccount {
   id          String @id @default(uuid())
   companyName String
+  resellerId  String?
+  creditBalance Float @default(0)
 
   isActive  Boolean @default(true)
   isDeleted Boolean @default(false)
@@ -138,6 +140,7 @@ model CustomerAccount {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  reseller           Reseller?            @relation("ResellerAccounts", fields: [resellerId], references: [id])
   users              User[]
   templates          Template[]
   bots               Bot[]
@@ -150,6 +153,49 @@ model CustomerAccount {
   whatsAppAccounts   WhatsAppAccount[]
   webhookEvents      WebhookEvent[]
   campaigns          Campaign[]
+  billingTransactions BillingTransaction[]
+}
+
+model Reseller {
+  id             String   @id @default(uuid())
+  companyName    String
+  firstName      String
+  lastName       String
+  userName       String?  @unique
+  email          String   @unique
+  phone          String   @unique
+  password       String
+  image          String?
+  commissionRate Float    @default(15)
+  balance        Float    @default(0)
+  tokenVersion   String   @default(uuid())
+  isActive       Boolean  @default(true)
+  isDeleted      Boolean  @default(false)
+  isVerified     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  accounts CustomerAccount[] @relation("ResellerAccounts")
+  billingTransactions BillingTransaction[]
+
+  @@index([isActive, isDeleted])
+}
+
+model BillingTransaction {
+  id          String                 @id @default(uuid())
+  resellerId  String
+  reseller    Reseller               @relation(fields: [resellerId], references: [id])
+  accountId   String?
+  account     CustomerAccount?       @relation(fields: [accountId], references: [id])
+  type        BillingTransactionType
+  amount      Float
+  currency    String                 @default("INR")
+  description String
+  reference   String?
+  createdAt   DateTime               @default(now())
+
+  @@index([resellerId, type, createdAt])
+  @@index([accountId, createdAt])
 }
 
 model WabaVerification {
@@ -885,6 +931,11 @@ enum ServiceType {
   TEMPLATE
   BOT
   MESSAGE
+}
+
+enum BillingTransactionType {
+  RECHARGE
+  COMMISSION
 }
 
 enum MessageDirection {

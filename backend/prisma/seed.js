@@ -9,6 +9,42 @@ const OWNER_PHONE = "919876543210";
 const OWNER_USERNAME = "chatflow_owner_demo";
 const OWNER_PASSWORD = "Owner@123";
 const COMPANY_NAME = "ChatFlow Demo Ventures";
+const RESELLER_COMPANY_NAME = "ChatFlow Partner Network";
+const RESELLER_EMAIL = "reseller@chatflow-demo.com";
+const RESELLER_PHONE = "919899887766";
+const RESELLER_USERNAME = "chatflow_reseller_demo";
+const RESELLER_PASSWORD = "Reseller@123";
+const PLAN_DEFINITIONS = [
+  {
+    name: "Starter",
+    description: "Best for new businesses starting WhatsApp engagement.",
+    price: 1499,
+    currency: "INR",
+    maxTemplates: 10,
+    maxBots: 2,
+    monthlyMessageLimit: 5000,
+  },
+  {
+    name: "Growth",
+    description:
+      "Balanced plan for scaling customer conversations and broadcasts.",
+    price: 3499,
+    currency: "INR",
+    maxTemplates: 40,
+    maxBots: 8,
+    monthlyMessageLimit: 20000,
+  },
+  {
+    name: "Scale",
+    description:
+      "For mature teams managing high-volume campaigns and automation.",
+    price: 6999,
+    currency: "INR",
+    maxTemplates: 100,
+    maxBots: 20,
+    monthlyMessageLimit: 75000,
+  },
+];
 
 const CONTACT_GROUPS = [
   {
@@ -186,6 +222,44 @@ const CONTACT_DEFINITIONS = [
     },
   },
 ];
+const RESELLER_CUSTOMER_DEFINITIONS = [
+  {
+    companyName: "Northstar Realty",
+    ownerFirstName: "Arjun",
+    ownerLastName: "Malhotra",
+    ownerEmail: "arjun@northstar-demo.com",
+    ownerPhone: "919700000111",
+    userName: "northstar_owner_demo",
+    password: "Owner@123",
+    planName: "Starter",
+    startDate: new Date("2026-02-01T00:00:00.000Z"),
+    isActive: true,
+  },
+  {
+    companyName: "BluePeak D2C",
+    ownerFirstName: "Neha",
+    ownerLastName: "Sethi",
+    ownerEmail: "neha@bluepeak-demo.com",
+    ownerPhone: "919700000222",
+    userName: "bluepeak_owner_demo",
+    password: "Owner@123",
+    planName: "Growth",
+    startDate: new Date("2026-03-01T00:00:00.000Z"),
+    isActive: true,
+  },
+  {
+    companyName: "PrimeCare Clinics",
+    ownerFirstName: "Karan",
+    ownerLastName: "Bedi",
+    ownerEmail: "karan@primecare-demo.com",
+    ownerPhone: "919700000333",
+    userName: "primecare_owner_demo",
+    password: "Owner@123",
+    planName: "Scale",
+    startDate: new Date("2026-04-01T00:00:00.000Z"),
+    isActive: false,
+  },
+];
 
 function extractVariables(text = "") {
   const regex = /\{\{\s*(\d+)\s*\}\}/g;
@@ -250,7 +324,9 @@ function buildTemplateComponents({
 
   if (bodyVariables?.length) {
     bodyComponent.example = {
-      body_text: [bodyVariables.map((token) => variableSamples[token] || token)],
+      body_text: [
+        bodyVariables.map((token) => variableSamples[token] || token),
+      ],
     };
   }
 
@@ -388,6 +464,222 @@ async function ensureOwnerAccount(roleId) {
 
     return { owner, account };
   });
+}
+
+async function ensureReseller() {
+  const hashedPassword = await bcrypt.hash(RESELLER_PASSWORD, 10);
+
+  const existingReseller = await prisma.reseller.findFirst({
+    where: {
+      OR: [
+        { email: RESELLER_EMAIL },
+        { phone: RESELLER_PHONE },
+        { userName: RESELLER_USERNAME },
+      ],
+    },
+  });
+
+  if (existingReseller) {
+    return prisma.reseller.update({
+      where: { id: existingReseller.id },
+      data: {
+        companyName: RESELLER_COMPANY_NAME,
+        firstName: "Demo",
+        lastName: "Reseller",
+        email: RESELLER_EMAIL,
+        phone: RESELLER_PHONE,
+        userName: RESELLER_USERNAME,
+        password: hashedPassword,
+        commissionRate: 18,
+        balance: 42500,
+        isActive: true,
+        isDeleted: false,
+        isVerified: true,
+      },
+    });
+  }
+
+  return prisma.reseller.create({
+    data: {
+      companyName: RESELLER_COMPANY_NAME,
+      firstName: "Demo",
+      lastName: "Reseller",
+      email: RESELLER_EMAIL,
+      phone: RESELLER_PHONE,
+      userName: RESELLER_USERNAME,
+      password: hashedPassword,
+      commissionRate: 18,
+      balance: 42500,
+      isActive: true,
+      isDeleted: false,
+      isVerified: true,
+    },
+  });
+}
+
+async function seedPlans() {
+  const plansByName = new Map();
+
+  for (const planDef of PLAN_DEFINITIONS) {
+    const plan = await prisma.plan.upsert({
+      where: { name: planDef.name },
+      update: {
+        description: planDef.description,
+        price: planDef.price,
+        currency: planDef.currency,
+        maxTemplates: planDef.maxTemplates,
+        maxBots: planDef.maxBots,
+        monthlyMessageLimit: planDef.monthlyMessageLimit,
+        isActive: true,
+        isDeleted: false,
+      },
+      create: {
+        name: planDef.name,
+        description: planDef.description,
+        price: planDef.price,
+        currency: planDef.currency,
+        maxTemplates: planDef.maxTemplates,
+        maxBots: planDef.maxBots,
+        monthlyMessageLimit: planDef.monthlyMessageLimit,
+        isActive: true,
+        isDeleted: false,
+      },
+    });
+
+    plansByName.set(plan.name, plan);
+  }
+
+  return plansByName;
+}
+
+async function ensureAccountSubscription(accountId, planId, startDate) {
+  const existing = await prisma.subscription.findFirst({
+    where: {
+      accountId,
+      isActive: true,
+    },
+  });
+
+  if (existing) {
+    return prisma.subscription.update({
+      where: { id: existing.id },
+      data: {
+        planId,
+        startDate,
+        endDate: null,
+        isActive: true,
+      },
+      include: {
+        plan: true,
+      },
+    });
+  }
+
+  return prisma.subscription.create({
+    data: {
+      accountId,
+      planId,
+      startDate,
+      isActive: true,
+    },
+    include: {
+      plan: true,
+    },
+  });
+}
+
+async function seedResellerManagedCustomers(resellerId, roleId, plansByName) {
+  for (const customerDef of RESELLER_CUSTOMER_DEFINITIONS) {
+    const hashedPassword = await bcrypt.hash(customerDef.password, 10);
+
+    const existingOwner = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: customerDef.ownerEmail },
+          { phone: customerDef.ownerPhone },
+          { userName: customerDef.userName },
+        ],
+      },
+      include: {
+        account: true,
+      },
+    });
+
+    let accountId;
+
+    if (existingOwner?.accountId) {
+      const owner = await prisma.user.update({
+        where: { id: existingOwner.id },
+        data: {
+          firstName: customerDef.ownerFirstName,
+          lastName: customerDef.ownerLastName,
+          email: customerDef.ownerEmail,
+          phone: customerDef.ownerPhone,
+          userName: customerDef.userName,
+          password: hashedPassword,
+          roleId,
+          isActive: customerDef.isActive,
+          isDeleted: false,
+          isVerified: true,
+          termsAccepted: true,
+        },
+      });
+
+      const account = await prisma.customerAccount.update({
+        where: { id: existingOwner.accountId },
+        data: {
+          companyName: customerDef.companyName,
+          resellerId,
+          isActive: customerDef.isActive,
+          isDeleted: false,
+        },
+      });
+
+      accountId = account.id;
+      void owner;
+    } else {
+      const created = await prisma.$transaction(async (tx) => {
+        const account = await tx.customerAccount.create({
+          data: {
+            companyName: customerDef.companyName,
+            resellerId,
+            isActive: customerDef.isActive,
+            isDeleted: false,
+          },
+        });
+
+        const owner = await tx.user.create({
+          data: {
+            firstName: customerDef.ownerFirstName,
+            lastName: customerDef.ownerLastName,
+            email: customerDef.ownerEmail,
+            phone: customerDef.ownerPhone,
+            userName: customerDef.userName,
+            password: hashedPassword,
+            roleId,
+            accountId: account.id,
+            isActive: customerDef.isActive,
+            isDeleted: false,
+            isVerified: true,
+            termsAccepted: true,
+          },
+        });
+
+        return { account, owner };
+      });
+
+      accountId = created.account.id;
+    }
+
+    const plan = plansByName.get(customerDef.planName);
+    if (plan) {
+      await ensureAccountSubscription(
+        accountId,
+        plan.id,
+        customerDef.startDate,
+      );
+    }
+  }
 }
 
 async function seedContactGroups(accountId, ownerId) {
@@ -561,7 +853,9 @@ async function seedTemplates(accountId, ownerId) {
       normalizedName: templateDef.name,
       headerType: templateDef.header?.type || "NONE",
       headerText:
-        templateDef.header?.type === "TEXT" ? templateDef.header.text || "" : "",
+        templateDef.header?.type === "TEXT"
+          ? templateDef.header.text || ""
+          : "",
       footerText: templateDef.footer?.text || "",
       variableSamples: templateDef.variableSamples || {},
       locationDetails: {},
@@ -622,19 +916,25 @@ async function seedTemplates(accountId, ownerId) {
   return templatesByName;
 }
 
-async function seedCampaigns(accountId, ownerId, templatesByName, contacts, groupsByTitle) {
+async function seedCampaigns(
+  accountId,
+  ownerId,
+  templatesByName,
+  contacts,
+  groupsByTitle,
+) {
   const welcomeTemplate = templatesByName.get("welcome_offer_template");
   const reminderTemplate = templatesByName.get("payment_reminder_template");
   const hotLeadsGroup = groupsByTitle.get("Hot Leads");
   const reEngagementGroup = groupsByTitle.get("Re-engagement");
   const existingCustomersGroup = groupsByTitle.get("Existing Customers");
 
-  const contactsByPhone = new Map(contacts.map((contact) => [contact.phone, contact]));
+  const contactsByPhone = new Map(
+    contacts.map((contact) => [contact.phone, contact]),
+  );
 
   const getContactIds = (phones = []) =>
-    phones
-      .map((phone) => contactsByPhone.get(phone)?.id)
-      .filter(Boolean);
+    phones.map((phone) => contactsByPhone.get(phone)?.id).filter(Boolean);
 
   const metricsFromAudienceStatuses = (audienceStatuses = []) => ({
     totalContacts: audienceStatuses.length,
@@ -645,7 +945,8 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       ["DELIVERED", "READ"].includes(status),
     ).length,
     readCount: audienceStatuses.filter((status) => status === "READ").length,
-    failedCount: audienceStatuses.filter((status) => status === "FAILED").length,
+    failedCount: audienceStatuses.filter((status) => status === "FAILED")
+      .length,
   });
 
   const campaignDefinitions = [
@@ -661,7 +962,11 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       delayInSeconds: 3,
       status: "DRAFT",
       logMessage: "Draft campaign created from seed data",
-      audienceContactIds: getContactIds(["919810000001", "919810000004", "919810000005"]),
+      audienceContactIds: getContactIds([
+        "919810000001",
+        "919810000004",
+        "919810000005",
+      ]),
       audienceStatuses: ["PENDING", "PENDING", "PENDING"],
     },
     {
@@ -737,7 +1042,8 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
     },
     {
       name: "Dormant User Recovery Failed",
-      description: "Campaign failed after delivery issues during recovery attempts.",
+      description:
+        "Campaign failed after delivery issues during recovery attempts.",
       templateId: reminderTemplate?.id,
       isScheduled: false,
       scheduledAt: null,
@@ -752,7 +1058,8 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
     },
     {
       name: "Cancelled Follow-up Blast",
-      description: "Campaign cancelled before all queued audience could be reached.",
+      description:
+        "Campaign cancelled before all queued audience could be reached.",
       templateId: welcomeTemplate?.id,
       isScheduled: false,
       scheduledAt: null,
@@ -762,7 +1069,11 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       delayInSeconds: 3,
       status: "CANCELLED",
       logMessage: "Cancelled campaign created from seed data",
-      audienceContactIds: getContactIds(["919810000001", "919810000002", "919810000004"]),
+      audienceContactIds: getContactIds([
+        "919810000001",
+        "919810000002",
+        "919810000004",
+      ]),
       audienceStatuses: ["READ", "SENT", "PENDING"],
     },
   ];
@@ -780,7 +1091,9 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       },
     });
 
-    const audienceMetrics = metricsFromAudienceStatuses(campaignDef.audienceStatuses || []);
+    const audienceMetrics = metricsFromAudienceStatuses(
+      campaignDef.audienceStatuses || [],
+    );
 
     const campaign = existing
       ? await prisma.campaign.update({
@@ -856,19 +1169,24 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
       await prisma.campaignAudience.createMany({
         data: uniqueAudienceContactIds.map((contactId, index) => {
           const status = audienceStatuses[index] || "PENDING";
-          const baseTime = campaignDef.startedAt || campaignDef.scheduledAt || new Date();
-          const sentAt = ["SENT", "DELIVERED", "READ", "FAILED"].includes(status)
+          const baseTime =
+            campaignDef.startedAt || campaignDef.scheduledAt || new Date();
+          const sentAt = ["SENT", "DELIVERED", "READ", "FAILED"].includes(
+            status,
+          )
             ? new Date(baseTime.getTime() + index * 60000)
             : null;
           const deliveredAt = ["DELIVERED", "READ"].includes(status)
             ? new Date(baseTime.getTime() + index * 60000 + 30000)
             : null;
-          const readAt = status === "READ"
-            ? new Date(baseTime.getTime() + index * 60000 + 60000)
-            : null;
-          const failedAt = status === "FAILED"
-            ? new Date(baseTime.getTime() + index * 60000 + 45000)
-            : null;
+          const readAt =
+            status === "READ"
+              ? new Date(baseTime.getTime() + index * 60000 + 60000)
+              : null;
+          const failedAt =
+            status === "FAILED"
+              ? new Date(baseTime.getTime() + index * 60000 + 45000)
+              : null;
 
           return {
             campaignId: campaign.id,
@@ -878,7 +1196,8 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
             deliveredAt,
             readAt,
             failedAt,
-            errorMessage: status === "FAILED" ? "Seeded delivery failure" : null,
+            errorMessage:
+              status === "FAILED" ? "Seeded delivery failure" : null,
           };
         }),
       });
@@ -908,8 +1227,28 @@ async function seedCampaigns(accountId, ownerId, templatesByName, contacts, grou
 }
 
 async function main() {
+  const reseller = await ensureReseller();
   const role = await ensureOwnerRole();
+  const plansByName = await seedPlans();
   const { owner, account } = await ensureOwnerAccount(role.id);
+  await prisma.customerAccount.update({
+    where: { id: account.id },
+    data: {
+      resellerId: reseller.id,
+      isActive: true,
+      isDeleted: false,
+    },
+  });
+  const growthPlan =
+    plansByName.get("Growth") || plansByName.values().next().value;
+  if (growthPlan) {
+    await ensureAccountSubscription(
+      account.id,
+      growthPlan.id,
+      new Date("2026-01-15T00:00:00.000Z"),
+    );
+  }
+  await seedResellerManagedCustomers(reseller.id, role.id, plansByName);
   const groupsByTitle = await seedContactGroups(account.id, owner.id);
   const fieldsByKey = await seedCustomFields(account.id);
   const contacts = await seedContacts(
@@ -929,10 +1268,18 @@ async function main() {
   );
 
   console.log("Seed completed successfully.");
+  console.log(`Reseller email: ${RESELLER_EMAIL}`);
+  console.log(`Reseller phone: ${RESELLER_PHONE}`);
+  console.log(`Reseller password: ${RESELLER_PASSWORD}`);
+  console.log(`Reseller company: ${RESELLER_COMPANY_NAME}`);
+  console.log(`Plans seeded: ${Array.from(plansByName.keys()).join(", ")}`);
   console.log(`Owner email: ${OWNER_EMAIL}`);
   console.log(`Owner phone: ${OWNER_PHONE}`);
   console.log(`Owner password: ${OWNER_PASSWORD}`);
   console.log(`Account: ${COMPANY_NAME}`);
+  console.log(
+    `Additional reseller customers: ${RESELLER_CUSTOMER_DEFINITIONS.map((item) => item.companyName).join(", ")}`,
+  );
 }
 
 main()
@@ -943,4 +1290,3 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

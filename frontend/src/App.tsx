@@ -33,6 +33,15 @@ import Automation from "./pages/Automation";
 import TeamMembers from "./pages/TeamMembers";
 import Billing from "./pages/Billing";
 import NotFound from "./pages/NotFound";
+import ResellerLogin from "./pages/reseller/ResellerLogin";
+import ResellerDashboard from "./pages/reseller/ResellerDashboard";
+import ResellerCustomers from "./pages/reseller/ResellerCustomers";
+import ResellerCustomerCreate from "./pages/reseller/ResellerCustomerCreate";
+import ResellerCustomerDetail from "./pages/reseller/ResellerCustomerDetail";
+import ResellerPlans from "./pages/reseller/ResellerPlans";
+import ResellerEarnings from "./pages/reseller/ResellerEarnings";
+import ResellerBilling from "./pages/reseller/ResellerBilling";
+import ResellerSettings from "./pages/reseller/ResellerSettings";
 
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import UserManagement from "./pages/admin/UserManagement";
@@ -66,6 +75,14 @@ const App = () => (
 
             <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+            <Route
+              path="/reseller/login"
+              element={
+                <PublicOnlyRoute portal="reseller">
+                  <ResellerLogin />
+                </PublicOnlyRoute>
+              }
+            />
 
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
@@ -81,6 +98,70 @@ const App = () => (
             <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+            <Route
+              path="/reseller"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/customers"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerCustomers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/customers/:id"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerCustomerDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/customers/new"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerCustomerCreate />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/plans"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerPlans />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/earnings"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerEarnings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/billing"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerBilling />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/settings"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerSettings />
+                </ProtectedRoute>
+              }
+            />
 
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />

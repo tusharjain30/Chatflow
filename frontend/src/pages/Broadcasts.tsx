@@ -747,7 +747,7 @@ export default function Broadcasts() {
         description: `${action.toUpperCase()} completed successfully`,
       });
 
-      // 🧠 cleanup
+      // cleanup
       if (action === "delete" && selectedCampaignId === campaign.id) {
         setDetailOpen(false);
         setSelectedCampaignId(null);
@@ -760,7 +760,7 @@ export default function Broadcasts() {
     } catch (error: any) {
       Swal.close();
 
-      // ❌ ERROR TOAST
+      // ERROR TOAST
       toast({
         title: "Error",
         description:
@@ -824,7 +824,7 @@ export default function Broadcasts() {
       setSelectedCampaignIds([]);
       await refreshView(selectedCampaignId);
     } catch (error: any) {
-      // ❌ Error Alert
+      // Error Alert
       Swal.fire({
         icon: "error",
         title: "Error",

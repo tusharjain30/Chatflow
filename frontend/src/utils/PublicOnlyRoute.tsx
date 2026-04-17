@@ -1,10 +1,19 @@
 import { Navigate } from "react-router-dom";
 
-export default function PublicOnlyRoute({ children }: { children: JSX.Element }) {
-  const token = localStorage.getItem("auth_token");
+type Portal = "user" | "reseller";
 
-  if (token) {
-    return <Navigate to="/" replace />;
+export default function PublicOnlyRoute({
+  children,
+  portal = "user",
+}: {
+  children: JSX.Element;
+  portal?: Portal;
+}) {
+  const token = localStorage.getItem("auth_token");
+  const authPortal = (localStorage.getItem("auth_portal") || "user") as Portal;
+
+  if (token && portal === authPortal) {
+    return <Navigate to={portal === "reseller" ? "/reseller" : "/"} replace />;
   }
 
   return children;
