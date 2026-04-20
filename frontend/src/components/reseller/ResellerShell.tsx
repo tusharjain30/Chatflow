@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
+import { FiLogOut } from "react-icons/fi";
 
 const items = [
   { to: "/reseller", label: "Overview", icon: LayoutDashboard },
@@ -40,20 +41,24 @@ export function ResellerShell({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.18),_transparent_30%),radial-gradient(circle_at_bottom_right,_rgba(250,204,21,0.14),_transparent_30%)]" />
-      <div className="relative flex min-h-screen">
-        <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-slate-950/80 px-5 py-6 backdrop-blur lg:flex lg:flex-col">
+    <div className="min-h-screen bg-gray-50 text-gray-800">
+      <div className="flex min-h-screen">
+        {/* SIDEBAR */}
+        <aside className="hidden lg:flex lg:flex-col fixed left-0 top-0 h-screen w-72 border-r bg-white px-5 py-6 shadow-sm">
+          {/* LOGO */}
           <Link to="/reseller" className="mb-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#16A249] text-white shadow">
               <ChartNoAxesCombined className="h-6 w-6" />
             </div>
             <div>
-              <p className="text-lg font-semibold">Reseller Hub</p>
-              <p className="text-sm text-slate-400">Partner control center</p>
+              <p className="text-lg font-semibold text-gray-900">
+                Reseller Hub
+              </p>
+              <p className="text-xs text-gray-500">Partner control center</p>
             </div>
           </Link>
 
+          {/* NAV */}
           <nav className="space-y-2">
             {items.map((item) => (
               <NavLink
@@ -62,10 +67,10 @@ export function ResellerShell({
                 end={item.to === "/reseller"}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition",
+                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all",
                     isActive
-                      ? "bg-cyan-400 text-slate-950"
-                      : "text-slate-300 hover:bg-white/5 hover:text-white",
+                      ? "bg-[#16A249] text-white shadow-sm"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
                   )
                 }
               >
@@ -75,57 +80,96 @@ export function ResellerShell({
             ))}
           </nav>
 
-          <div className="mt-auto rounded-3xl border border-white/10 bg-white/5 p-4">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-300 text-slate-950">
-                <Wallet className="h-5 w-5" />
+          {/* WALLET CARD */}
+          <div className="mt-auto sticky bottom-4">
+            <div className="rounded-2xl border bg-gray-50 p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Wallet balance</p>
+                  <p className="text-lg font-semibold text-gray-900">
+                    ₹ {(user?.balance ?? 0).toLocaleString()}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-slate-400">Wallet balance</p>
-                <p className="text-xl font-semibold">
-                  INR {(user?.balance ?? 0).toLocaleString()}
-                </p>
-              </div>
+
+              <Button
+                variant="outline"
+                className="w-full flex items-center justify-center gap-2 border-red-300 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                onClick={() => {
+                  logout();
+                  navigate("/reseller/login");
+                }}
+              >
+                <FiLogOut className="h-4 w-4" />
+                Logout
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              className="w-full border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-              onClick={() => {
-                logout();
-                navigate("/reseller/login");
-              }}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </Button>
           </div>
         </aside>
 
-        <main className="flex-1">
+        {/* MAIN */}
+        <main className="flex-1 lg:ml-72">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            <div className="mb-8 rounded-[28px] border border-white/10 bg-white/5 p-6 backdrop-blur">
-              {eyebrow ? (
-                <p className="mb-2 text-sm uppercase tracking-[0.25em] text-cyan-300">
+            {/* HEADER */}
+            <div className="mb-8 rounded-2xl border bg-white p-6 shadow-sm">
+              {eyebrow && (
+                <p className="mb-2 text-xs uppercase tracking-widest text-[#16A249] font-semibold">
                   {eyebrow}
                 </p>
-              ) : null}
-              <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              )}
+
+              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                {/* LEFT */}
                 <div>
-                  <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-                  <p className="mt-2 max-w-2xl text-sm text-slate-300">
-                    Manage your customer portfolio, monitor subscription performance,
-                    and keep partner operations moving from one place.
+                  <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+                    {title}
+                  </h1>
+
+                  <p className="mt-2 max-w-xl text-xs text-gray-500">
+                    Manage your customer portfolio, monitor subscription
+                    performance, and keep partner operations moving from one
+                    place.
                   </p>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm">
-                  <p className="text-slate-400">Signed in as</p>
-                  <p className="font-medium">
-                    {user?.firstName} {user?.lastName}
-                  </p>
-                  <p className="text-slate-400">{user?.companyName || user?.email}</p>
+
+                {/* USER CARD */}
+                <div className="group w-full md:w-auto flex items-center gap-4 rounded-2xl bg-white px-5 py-4 border border-gray-100 hover:border-gray-200 transition-all duration-300 ease-in-out cursor-pointer">
+                  {/* AVATAR - Added a subtle ring and gradient feel */}
+                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-50 to-green-100 text-[#16A249] font-bold text-sm border border-green-200/50 shadow-inner">
+                    {user?.firstName?.[0]}
+                    {user?.lastName?.[0]}
+                    {/* Active indicator repositioned on avatar for a modern look */}
+                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                  </div>
+
+                  {/* USER INFO */}
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">
+                      Signed in as
+                    </p>
+
+                    <p className="font-bold text-gray-800 text-sm leading-tight group-hover:text-green-700 transition-colors">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+
+                    <p className="text-xs text-gray-500 truncate max-w-[150px] font-medium mt-0.5">
+                      {user?.companyName || user?.email}
+                    </p>
+                  </div>
+
+                  {/* STATUS BADGE - Cleaner pill-style design */}
+                  <div className="ml-auto hidden sm:flex items-center px-2 py-1 rounded-full bg-green-50 border border-green-100">
+                    <span className="text-[10px] font-bold text-green-700">
+                      ONLINE
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
+
             {children}
           </div>
         </main>

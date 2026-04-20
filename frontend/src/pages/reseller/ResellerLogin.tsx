@@ -74,27 +74,33 @@ export default function ResellerLogin() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100">
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(135deg,rgba(56,189,248,0.18),rgba(15,23,42,0.9),rgba(250,204,21,0.12))] p-8 sm:p-10">
+    <div className="min-h-screen bg-gray-50 px-4 py-10 flex items-center justify-center">
+      <div className="w-full max-w-6xl grid gap-8 lg:grid-cols-2">
+        {/* LEFT SECTION */}
+        <section className="rounded-3xl bg-white p-8 shadow-sm border">
           <div className="mb-10 flex items-center gap-3">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-300 text-slate-950">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#16A249] text-white shadow">
               <ChartNoAxesCombined className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">Reseller Panel</p>
-              <p className="text-sm text-slate-300">ChatFlow partner workspace</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                Reseller Panel
+              </p>
+              <p className="text-sm text-gray-500">
+                ChatFlow partner workspace
+              </p>
             </div>
           </div>
 
           <div className="space-y-6">
             <div>
-              <p className="mb-3 text-sm uppercase tracking-[0.3em] text-cyan-300">
+              <p className="mb-3 text-xs uppercase tracking-widest text-[#16A249] font-semibold">
                 Revenue Operations
               </p>
-              <h1 className="max-w-xl text-4xl font-semibold leading-tight">
-                Manage customer accounts, subscriptions, and reseller performance
-                from one focused panel.
+
+              <h1 className="text-3xl font-semibold text-gray-900 leading-snug">
+                Manage customer accounts, subscriptions, and reseller
+                performance from one focused panel.
               </h1>
             </div>
 
@@ -113,76 +119,96 @@ export default function ResellerLogin() {
                   value: "Create new client workspaces in minutes",
                 },
               ].map((item) => (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                  <p className="mb-2 text-sm font-medium text-white">{item.label}</p>
-                  <p className="text-sm text-slate-300">{item.value}</p>
+                <div
+                  key={item.label}
+                  className="rounded-2xl border bg-gray-50 p-4 hover:shadow-sm transition"
+                >
+                  <p className="mb-1 text-sm font-semibold text-gray-800">
+                    {item.label}
+                  </p>
+                  <p className="text-xs text-gray-500">{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
         </section>
 
-        <Card className="border-white/10 bg-slate-900/85 text-slate-100 shadow-2xl">
+        {/* LOGIN CARD */}
+        <Card className="bg-white border shadow-sm">
           <CardHeader>
-            <CardTitle className="text-2xl">Sign in to reseller panel</CardTitle>
-            <CardDescription className="text-slate-400">
+            <CardTitle className="text-xl text-gray-900">
+              Sign in to reseller panel
+            </CardTitle>
+            <CardDescription className="text-gray-500">
               Use your reseller email, username, or phone number.
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-5">
+              {/* IDENTIFIER */}
               <div className="space-y-2">
-                <Label>Email, username, or phone</Label>
+                <Label className="text-gray-700">
+                  Email / Username / Phone
+                </Label>
                 <Input
                   value={identifier}
-                  onChange={(event) => setIdentifier(event.target.value)}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="partner@yourcompany.com"
-                  className="border-white/10 bg-slate-950"
+                  className="bg-gray-50 border focus:border-[#16A249] focus:ring-[#16A249]"
                 />
               </div>
 
+              {/* PASSWORD */}
               <div className="space-y-2">
-                <Label>Password</Label>
+                <Label className="text-gray-700">Password</Label>
                 <div className="relative">
                   <Input
                     type={showPassword ? "text" : "password"}
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Enter your password"
-                    className="border-white/10 bg-slate-950 pr-12"
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="bg-gray-50 border pr-12 focus:border-[#16A249] focus:ring-[#16A249]"
                   />
                   <button
                     type="button"
-                    className="absolute inset-y-0 right-0 px-3 text-slate-400"
-                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute inset-y-0 right-0 px-3 text-gray-500"
+                    onClick={() => setShowPassword((v) => !v)}
                   >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
                   </button>
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              {/* REMEMBER */}
+              <label className="flex items-center gap-2 text-sm text-gray-600">
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(event) => setRememberMe(event.target.checked)}
-                  className="rounded border-white/20"
+                  onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                Keep me signed in on this device
+                Keep me signed in
               </label>
 
+              {/* BUTTON */}
               <Button
                 type="submit"
-                className="w-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+                className="w-full bg-[#16A249] hover:bg-[#12813a] text-white rounded-xl"
                 disabled={isLoading}
               >
                 {isLoading ? "Signing in..." : "Open reseller panel"}
               </Button>
             </form>
 
-            <p className="mt-6 text-center text-sm text-slate-400">
+            <p className="mt-6 text-center text-sm text-gray-500">
               Looking for the customer workspace?{" "}
-              <Link to="/login" className="font-medium text-cyan-300 hover:text-cyan-200">
+              <Link
+                to="/login"
+                className="font-medium text-[#16A249] hover:underline"
+              >
                 Go to standard login
               </Link>
             </p>

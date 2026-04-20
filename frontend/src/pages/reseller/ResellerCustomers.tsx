@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   Building2,
@@ -17,6 +17,8 @@ import { useNavigate } from "react-router-dom";
 import { ResellerShell } from "@/components/reseller/ResellerShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import EmojiPicker from "emoji-picker-react";
+import { FiRotateCcw, FiSmile } from "react-icons/fi";
 import {
   Dialog,
   DialogContent,
@@ -33,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
+import Swal from "sweetalert2";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 type CustomerItem = {
@@ -101,10 +103,12 @@ type ActionType = "changePlan" | "recharge" | "team" | "message" | null;
 export default function ResellerCustomers() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const emojiRef = useRef<HTMLDivElement | null>(null);
   const [items, setItems] = useState<CustomerItem[]>([]);
   const [search, setSearch] = useState("");
   const [stats, setStats] = useState<PortfolioStats | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>([]);
+  const [showEmoji, setShowEmoji] = useState(false);
   const [filters, setFilters] = useState({
     status: "all",
     planId: "all",
@@ -113,7 +117,10 @@ export default function ResellerCustomers() {
     usageMin: "",
     usageMax: "",
   });
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(
+    null,
+  );
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<ActionType>(null);
   const [submitting, setSubmitting] = useState(false);
   const [changePlanId, setChangePlanId] = useState("");
@@ -136,54 +143,62 @@ export default function ResellerCustomers() {
   const getSmartStatuses = (item: CustomerItem) => {
     const badges: Array<{ label: string; className: string }> = [];
 
-    if (item.isActive) {
-      badges.push({
-        label: "Active",
-        className: "bg-emerald-400/15 text-emerald-300",
-      });
-    } else {
-      badges.push({
-        label: "Paused",
-        className: "bg-amber-400/15 text-amber-300",
-      });
-    }
-
+    const now = new Date();
     const startDate = item.subscription?.startDate
       ? new Date(item.subscription.startDate)
       : null;
     const expiryDate = item.subscriptionExpiryDate
       ? new Date(item.subscriptionExpiryDate)
       : null;
-    const now = new Date();
 
+    // ACTIVE / PAUSED
+    if (item.isActive) {
+      badges.push({
+        label: "Active",
+        className: "bg-green-50 text-[#16A249] border border-green-200",
+      });
+    } else {
+      badges.push({
+        label: "Paused",
+        className: "bg-gray-100 text-gray-600 border border-gray-200",
+      });
+    }
+
+    // TRIAL
     if (startDate) {
-      const trialEndsAt = new Date(startDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+      const trialEndsAt = new Date(
+        startDate.getTime() + 14 * 24 * 60 * 60 * 1000,
+      );
+
       if (now <= trialEndsAt) {
         badges.push({
           label: "Trial",
-          className: "bg-yellow-400/15 text-yellow-300",
+          className: "bg-yellow-50 text-yellow-700 border border-yellow-200",
         });
       }
     }
 
+    // EXPIRED
     if (expiryDate && expiryDate < now) {
       badges.push({
         label: "Expired",
-        className: "bg-red-400/15 text-red-300",
+        className: "bg-red-50 text-red-600 border border-red-200",
       });
     }
 
+    // LOW BALANCE
     if (item.creditBalance <= 1000) {
       badges.push({
         label: "Low Balance",
-        className: "bg-orange-400/15 text-orange-300",
+        className: "bg-orange-50 text-orange-600 border border-orange-200",
       });
     }
 
+    // HIGH USAGE
     if ((item.usage?.percentage || 0) >= 80) {
       badges.push({
         label: "High Usage",
-        className: "bg-sky-400/15 text-sky-300",
+        className: "bg-purple-50 text-purple-600 border border-purple-200",
       });
     }
 
@@ -201,23 +216,25 @@ export default function ResellerCustomers() {
     if (filters.usageMin) params.set("usageMin", filters.usageMin);
     if (filters.usageMax) params.set("usageMax", filters.usageMax);
 
-    const [customersResponse, statsResponse, plansResponse] = await Promise.all([
-      fetch(`${API_BASE}/reseller/customers?${params.toString()}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-      fetch(`${API_BASE}/reseller/dashboard/stats`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-      fetch(`${API_BASE}/reseller/plans`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }),
-    ]);
+    const [customersResponse, statsResponse, plansResponse] = await Promise.all(
+      [
+        fetch(`${API_BASE}/reseller/customers?${params.toString()}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_BASE}/reseller/dashboard/stats`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+        fetch(`${API_BASE}/reseller/plans`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }),
+      ],
+    );
 
     const customersJson = await customersResponse.json();
     const statsJson = await statsResponse.json();
@@ -241,30 +258,67 @@ export default function ResellerCustomers() {
   }, []);
 
   const toggleStatus = async (item: CustomerItem) => {
-    const response = await fetch(`${API_BASE}/reseller/customers/status`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        accountId: item.id,
-        isActive: !item.isActive,
-      }),
+    const actionText = item.isActive ? "pause" : "activate";
+
+    // CONFIRMATION POPUP
+    const result = await Swal.fire({
+      title: `Are you sure?`,
+      text: `You are about to ${actionText} this customer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#16A249",
+      cancelButtonColor: "#d33",
+      confirmButtonText: `Yes, ${actionText} it`,
+      reverseButtons: true,
     });
 
-    const json = await response.json();
-    if (response.ok && json.status === 1) {
-      await fetchCustomers(search);
-      toast({
-        title: item.isActive ? "Customer paused" : "Customer activated",
-        description: `${item.companyName} has been updated.`,
+    if (!result.isConfirmed) return;
+
+    try {
+      // LOADING STATE
+      Swal.fire({
+        title: "Processing...",
+        text: "Please wait",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
       });
-    } else {
-      toast({
-        title: "Status update failed",
-        description: json.message || "Unable to update customer status",
-        variant: "destructive",
+
+      const response = await fetch(`${API_BASE}/reseller/customers/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          accountId: item.id,
+          isActive: !item.isActive,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (response.ok && json.status === 1) {
+        await fetchCustomers(search);
+
+        // SUCCESS
+        Swal.fire({
+          icon: "success",
+          title: item.isActive ? "Customer Paused" : "Customer Activated",
+          text: `${item.companyName} has been updated successfully.`,
+          confirmButtonColor: "#16A249",
+        });
+      } else {
+        throw new Error(json.message);
+      }
+    } catch (error: any) {
+      // ERROR
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: error.message || "Something went wrong",
+        confirmButtonColor: "#d33",
       });
     }
   };
@@ -352,13 +406,39 @@ export default function ResellerCustomers() {
     } catch (error) {
       toast({
         title: "Action failed",
-        description: error instanceof Error ? error.message : "Unable to complete action",
+        description:
+          error instanceof Error ? error.message : "Unable to complete action",
         variant: "destructive",
       });
     } finally {
       setSubmitting(false);
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiRef.current &&
+        !emojiRef.current.contains(event.target as Node)
+      ) {
+        setShowEmoji(false);
+      }
+    };
+
+    if (showEmoji) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showEmoji]);
+
+  useEffect(() => {
+    const handleClick = () => setOpenMenuId(null);
+
+    document.addEventListener("click", handleClick);
+
+    return () => document.removeEventListener("click", handleClick);
+  }, []);
 
   return (
     <ResellerShell title="Customer portfolio" eyebrow="Account Management">
@@ -381,43 +461,83 @@ export default function ResellerCustomers() {
           },
           {
             label: "Monthly Revenue",
-            value: `INR ${Number(stats?.monthlyRevenue ?? 0).toLocaleString()}`,
+            value: `₹ ${Number(stats?.monthlyRevenue ?? 0).toLocaleString()}`,
             icon: TrendingUp,
           },
           {
-            label: "Messages Used (this month)",
+            label: "Messages Used",
             value: Number(stats?.messagesUsedThisMonth ?? 0).toLocaleString(),
             icon: MessageSquareText,
           },
         ].map((metric) => (
-          <Card key={metric.label} className="border-white/10 bg-slate-900/80 text-slate-100">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-slate-300">
+          <Card
+            key={metric.label}
+            className="relative overflow-hidden rounded-2xl border bg-white shadow-sm hover:shadow-md transition"
+          >
+            {/* LEFT ACCENT LINE */}
+            <div className="absolute left-0 top-0 h-full w-1 bg-[#16A249]" />
+
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs font-medium text-gray-500 uppercase tracking-wide">
                 {metric.label}
               </CardTitle>
-              <metric.icon className="h-5 w-5 text-cyan-300" />
+
+              <div className="p-2 rounded-lg bg-green-50">
+                <metric.icon className="h-4 w-4 text-[#16A249]" />
+              </div>
             </CardHeader>
+
             <CardContent>
-              <p className="text-3xl font-semibold">{metric.value}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {metric.value}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card className="mb-6 border-white/10 bg-slate-900/80 text-slate-100">
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-          <div className="space-y-2">
-            <Label>Status</Label>
+      <Card className="bg-white rounded-2xl mb-2">
+        {/* HEADER */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b">
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Filters</p>
+            <p className="text-xs text-gray-500">Refine your customer list</p>
+          </div>
+
+          {/* RESET QUICK BUTTON */}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="flex items-center gap-2 text-gray-500 hover:text-[#16A249] hover:bg-green-50 rounded-lg"
+            onClick={() => {
+              setFilters({
+                status: "all",
+                planId: "all",
+                revenueMin: "",
+                revenueMax: "",
+                usageMin: "",
+                usageMax: "",
+              });
+              setTimeout(() => fetchCustomers(search), 0);
+            }}
+          >
+            <FiRotateCcw className="h-4 w-4" />
+            Reset
+          </Button>
+        </div>
+
+        {/* FILTER GRID */}
+        <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-6 pt-5">
+          {/* STATUS */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500">Status</Label>
             <Select
               value={filters.status}
               onValueChange={(value) =>
-                setFilters((current) => ({ ...current, status: value }))
+                setFilters((c) => ({ ...c, status: value }))
               }
             >
-              <SelectTrigger className="border-white/10 bg-slate-950">
+              <SelectTrigger className="bg-gray-50 border focus:border-[#16A249]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -429,15 +549,16 @@ export default function ResellerCustomers() {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Plan type</Label>
+          {/* PLAN */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500">Plan</Label>
             <Select
               value={filters.planId}
               onValueChange={(value) =>
-                setFilters((current) => ({ ...current, planId: value }))
+                setFilters((c) => ({ ...c, planId: value }))
               }
             >
-              <SelectTrigger className="border-white/10 bg-slate-950">
+              <SelectTrigger className="bg-gray-50 border focus:border-[#16A249]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -451,347 +572,288 @@ export default function ResellerCustomers() {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Revenue min</Label>
-            <Input
-              value={filters.revenueMin}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  revenueMin: event.target.value,
-                }))
-              }
-              placeholder="0"
-              className="border-white/10 bg-slate-950"
-            />
+          {/* REVENUE RANGE */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500">Revenue</Label>
+            <div className="flex gap-2">
+              <Input
+                value={filters.revenueMin}
+                onChange={(e) =>
+                  setFilters((c) => ({ ...c, revenueMin: e.target.value }))
+                }
+                placeholder="Min"
+                className="bg-gray-50 border focus:border-[#16A249]"
+              />
+              <Input
+                value={filters.revenueMax}
+                onChange={(e) =>
+                  setFilters((c) => ({ ...c, revenueMax: e.target.value }))
+                }
+                placeholder="Max"
+                className="bg-gray-50 border focus:border-[#16A249]"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Revenue max</Label>
-            <Input
-              value={filters.revenueMax}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  revenueMax: event.target.value,
-                }))
-              }
-              placeholder="5000"
-              className="border-white/10 bg-slate-950"
-            />
+          {/* USAGE RANGE */}
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500">Usage %</Label>
+            <div className="flex gap-2">
+              <Input
+                value={filters.usageMin}
+                onChange={(e) =>
+                  setFilters((c) => ({ ...c, usageMin: e.target.value }))
+                }
+                placeholder="Min"
+                className="bg-gray-50 border focus:border-[#16A249]"
+              />
+              <Input
+                value={filters.usageMax}
+                onChange={(e) =>
+                  setFilters((c) => ({ ...c, usageMax: e.target.value }))
+                }
+                placeholder="Max"
+                className="bg-gray-50 border focus:border-[#16A249]"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Usage % min</Label>
-            <Input
-              value={filters.usageMin}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  usageMin: event.target.value,
-                }))
-              }
-              placeholder="0"
-              className="border-white/10 bg-slate-950"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Usage % max</Label>
-            <Input
-              value={filters.usageMax}
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  usageMax: event.target.value,
-                }))
-              }
-              placeholder="100"
-              className="border-white/10 bg-slate-950"
-            />
-          </div>
-
-          <div className="flex gap-3 md:col-span-2 xl:col-span-6">
+          {/* APPLY BUTTON */}
+          <div className="flex items-end">
             <Button
-              type="button"
-              className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+              className="w-full bg-[#16A249] text-white hover:bg-[#12813a] rounded-xl"
               onClick={() => fetchCustomers(search)}
             >
-              Apply filters
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-              onClick={() => {
-                setFilters({
-                  status: "all",
-                  planId: "all",
-                  revenueMin: "",
-                  revenueMax: "",
-                  usageMin: "",
-                  usageMax: "",
-                });
-                setTimeout(() => fetchCustomers(search), 0);
-              }}
-            >
-              Reset
+              Apply Filters
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-slate-900/80 text-slate-100">
+      <Card className="bg-white">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-cyan-300" />
+            <Building2 className="h-5 w-5 text-[#16A249]" />
             Managed customers
           </CardTitle>
+
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                fetchCustomers(search);
-              }
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") fetchCustomers(search);
             }}
             placeholder="Search company or owner"
-            className="max-w-sm border-white/10 bg-slate-950"
+            className="max-w-sm bg-gray-50 border focus:border-[#16A249]"
           />
         </CardHeader>
-        <CardContent className="space-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="rounded-3xl border border-white/10 bg-white/5 p-4"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-lg font-semibold">{item.companyName}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {getSmartStatuses(item).map((badge) => (
-                        <span
-                          key={badge.label}
-                          className={`rounded-full px-3 py-1 text-xs font-medium ${badge.className}`}
-                        >
-                          {badge.label}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-300">
-                    Owner: {item.owner ? `${item.owner.firstName} ${item.owner.lastName}` : "Not assigned"}
-                  </p>
-                  <p className="text-sm text-slate-400">
-                    {item.owner?.email} {item.owner?.phone ? `• ${item.owner.phone}` : ""}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-slate-300">
-                    <span>Users: {item.counts.users}</span>
-                    <span>Contacts: {item.counts.contacts}</span>
-                    <span>Campaigns: {item.counts.campaigns}</span>
-                    <span>
-                      Plan: {item.subscription?.plan?.name || "Not assigned"}
-                      {item.subscription?.plan?.price
-                        ? ` (${item.subscription.plan.currency} ${item.subscription.plan.price})`
-                        : ""}
+
+        <CardContent className="overflow-x-auto">
+          <table className="w-full text-sm">
+            {/* HEADER */}
+            <thead>
+              <tr className="text-left text-gray-500 border-b">
+                <th className="py-3">Company</th>
+                <th>Plan</th>
+                <th>Users</th>
+                <th>Usage</th>
+                <th>Expiry</th>
+                <th>Profit</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
+
+            {/* BODY */}
+            <tbody>
+              {items.map((item) => (
+                <tr
+                  key={item.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  {/* COMPANY */}
+                  <td className="py-4">
+                    <p className="font-medium text-gray-900">
+                      {item.companyName}
+                    </p>
+                    <p className="text-xs text-gray-500">{item.owner?.email}</p>
+                  </td>
+
+                  {/* PLAN */}
+                  <td>
+                    <span className="text-[#16A249] font-medium">
+                      {item.subscription?.plan?.name || "-"}
                     </span>
-                  </div>
+                  </td>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Price
-                      </p>
-                      {item.pricing ? (
-                        <>
-                          <p className="mt-2 text-sm text-slate-300">
-                            Base: {item.pricing.currency}{" "}
-                            {item.pricing.basePrice.toLocaleString()}
-                          </p>
-                          <p className="text-sm font-medium text-cyan-300">
-                            Reseller: {item.pricing.currency}{" "}
-                            {item.pricing.resellerPrice.toLocaleString()}
-                          </p>
-                        </>
-                      ) : (
-                        <p className="mt-2 text-sm text-slate-400">
-                          Not assigned
-                        </p>
-                      )}
+                  {/* USERS */}
+                  <td>{item.counts.users}</td>
+
+                  {/* USAGE */}
+                  <td>
+                    {item.usage
+                      ? `${item.usage.used}/${item.usage.limit}`
+                      : "-"}
+                  </td>
+
+                  {/* EXPIRY */}
+                  <td className="text-red-500 text-xs">
+                    {item.subscriptionExpiryDate
+                      ? new Date(
+                          item.subscriptionExpiryDate,
+                        ).toLocaleDateString()
+                      : "-"}
+                  </td>
+
+                  {/* PROFIT */}
+                  <td className="text-[#16A249] font-medium">
+                    ₹ {Number(item.pricing?.profit || 0).toLocaleString()}
+                  </td>
+
+                  {/* STATUS */}
+                  <td>
+                    <span
+                      className={`px-2 py-1 text-xs rounded-full ${
+                        item.isActive
+                          ? "bg-green-100 text-green-700"
+                          : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {item.isActive ? "Active" : "Paused"}
+                    </span>
+                  </td>
+
+                  {/* ACTIONS */}
+                  <td className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        className="bg-[#16A249] text-white text-xs"
+                        onClick={() =>
+                          navigate(`/reseller/customers/${item.id}`)
+                        }
+                      >
+                        View
+                      </Button>
+
+                      {/* DROPDOWN (clean UX) */}
+                      <div className="relative">
+                        {/* BUTTON */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(
+                              openMenuId === item.id ? null : item.id,
+                            );
+                          }}
+                          className="px-2"
+                        >
+                          ⋮
+                        </Button>
+
+                        {/* DROPDOWN */}
+                        {openMenuId === item.id && (
+                          <div
+                            onClick={(e) => e.stopPropagation()}
+                            className="absolute right-0 mt-2 w-44 bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+                          >
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              onClick={() => {
+                                setSelectedCustomer(item);
+                                setActiveAction("changePlan");
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              Change Plan
+                            </button>
+
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              onClick={() => {
+                                setSelectedCustomer(item);
+                                setActiveAction("recharge");
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              Recharge
+                            </button>
+
+                            <button
+                              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              onClick={() => {
+                                setSelectedCustomer(item);
+                                setActiveAction("message");
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              Send Message
+                            </button>
+
+                            {/* STATUS ACTION */}
+                            <button
+                              className={`w-full text-left px-4 py-2 text-sm font-medium ${
+                                item.isActive
+                                  ? "text-red-600 hover:bg-red-50"
+                                  : "text-[#16A249] hover:bg-green-50"
+                              }`}
+                              onClick={() => {
+                                toggleStatus(item);
+                                setOpenMenuId(null);
+                              }}
+                            >
+                              {item.isActive
+                                ? "Pause account"
+                                : "Activate account"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
 
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Usage
-                      </p>
-                      {item.usage ? (
-                        <>
-                          <p className="mt-2 text-sm text-slate-300">
-                            {item.usage.used.toLocaleString()} /{" "}
-                            {item.usage.limit.toLocaleString() || "Open"}
-                          </p>
-                          <p className="text-sm font-medium text-cyan-300">
-                            {item.usage.percentage}% used
-                          </p>
-                        </>
-                      ) : (
-                        <p className="mt-2 text-sm text-slate-400">
-                          No usage data
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Subscription
-                      </p>
-                      <p className="mt-2 text-sm text-slate-300">
-                        Expires:{" "}
-                        {item.subscriptionExpiryDate
-                          ? new Date(item.subscriptionExpiryDate).toLocaleDateString(
-                              "en-GB",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                              },
-                            )
-                          : "Not set"}
-                      </p>
-                      <p className="text-sm font-medium text-cyan-300">
-                        Profit: {item.pricing?.currency || "INR"}{" "}
-                        {Number(item.pricing?.profit || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Messages sent (7d)
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-100">
-                        {item.metrics.messagesSentLast7Days.toLocaleString()}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Campaign success
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-slate-100">
-                        {item.metrics.campaignSuccessRate}%
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-3">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Last activity
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-100">
-                        {item.metrics.lastActivity
-                          ? new Date(item.metrics.lastActivity).toLocaleString(
-                              "en-GB",
-                              {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              },
-                            )
-                          : "No activity yet"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => navigate(`/reseller/customers/${item.id}`)}
-                  >
-                    View details
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => {
-                      setSelectedCustomer(item);
-                      setChangePlanId("");
-                      setActiveAction("changePlan");
-                    }}
-                  >
-                    <RefreshCcw className="mr-2 h-4 w-4" />
-                    Change Plan
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => {
-                      setSelectedCustomer(item);
-                      setRechargeAmount("");
-                      setActiveAction("recharge");
-                    }}
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Recharge / Add Credits
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => {
-                      setSelectedCustomer(item);
-                      setActiveAction("team");
-                    }}
-                  >
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Team Member
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => {
-                      setSelectedCustomer(item);
-                      setMessageForm({
-                        to: item.owner?.phone || "",
-                        message: "",
-                      });
-                      setActiveAction("message");
-                    }}
-                  >
-                    <MessageCircleMore className="mr-2 h-4 w-4" />
-                    Send Message (test)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
-                    onClick={() => toggleStatus(item)}
-                  >
-                    {item.isActive ? (
-                      <PauseCircle className="mr-2 h-4 w-4" />
-                    ) : (
-                      <PlayCircle className="mr-2 h-4 w-4" />
-                    )}
-                    {item.isActive ? "Pause account" : "Activate account"}
-                  </Button>
-                </div>
+          {/* EMPTY STATE */}
+          {!items.length && (
+            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-green-200 bg-green-50 py-12 text-center">
+              {/* ICON */}
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+                <Building2 className="h-6 w-6 text-[#16A249]" />
               </div>
-            </div>
-          ))}
 
-          {!items.length ? (
-            <div className="rounded-3xl border border-dashed border-white/10 p-10 text-center text-slate-400">
-              No customers found yet.
+              {/* TITLE */}
+              <p className="text-sm font-semibold text-gray-900">
+                No customers found
+              </p>
+
+              {/* DESCRIPTION */}
+              <p className="text-xs text-gray-500 mt-1 max-w-xs">
+                Try adjusting your filters or create a new customer to get
+                started
+              </p>
+
+              {/* ACTION BUTTON */}
+              <Button
+                className="mt-4 bg-[#16A249] text-white hover:bg-[#12813a] rounded-xl px-5"
+                onClick={() => navigate("/reseller/customers/new")}
+              >
+                + Add Customer
+              </Button>
             </div>
-          ) : null}
+          )}
         </CardContent>
       </Card>
 
-      <Dialog open={!!activeAction} onOpenChange={(open) => !open && closeDialog()}>
-        <DialogContent className="border-white/10 bg-slate-900 text-slate-100">
+      <Dialog
+        open={!!activeAction}
+        onOpenChange={(open) => !open && closeDialog()}
+      >
+        <DialogContent className="bg-white border shadow-lg rounded-2xl w-full max-w-3xl">
           <DialogHeader>
             <DialogTitle>
               {activeAction === "changePlan"
@@ -805,130 +867,331 @@ export default function ResellerCustomers() {
           </DialogHeader>
 
           {activeAction === "changePlan" ? (
-            <div className="space-y-4">
+            <div className="space-y-5 pt-4">
+              {/* LABEL */}
               <div className="space-y-2">
-                <Label>Select plan</Label>
+                <Label className="text-sm text-gray-700">Select plan</Label>
+
                 <Select value={changePlanId} onValueChange={setChangePlanId}>
-                  <SelectTrigger className="border-white/10 bg-slate-950">
+                  <SelectTrigger className="bg-gray-50 border focus:border-[#16A249]">
                     <SelectValue placeholder="Choose a plan" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {plans.map((plan) => (
                       <SelectItem key={plan.id} value={plan.id}>
-                        {plan.name} ({plan.currency} {plan.price})
+                        <div className="flex items-center justify-between w-full">
+                          {/* LEFT */}
+                          <span className="text-gray-800">{plan.name}</span>
+
+                          {/* RIGHT */}
+                          <span className="text-xs text-gray-500 ml-2">
+                            {plan.currency} {plan.price}
+                          </span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* PLAN PREVIEW (Optional but 🔥) */}
+              {changePlanId && (
+                <div className="rounded-xl border bg-green-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Selected plan</p>
+
+                  {(() => {
+                    const selected = plans.find((p) => p.id === changePlanId);
+                    return selected ? (
+                      <div className="flex justify-between items-center">
+                        <p className="font-medium text-gray-900">
+                          {selected.name}
+                        </p>
+                        <p className="text-[#16A249] font-semibold">
+                          {selected.currency} {selected.price}
+                        </p>
+                      </div>
+                    ) : null;
+                  })()}
+                </div>
+              )}
             </div>
           ) : null}
 
           {activeAction === "recharge" ? (
-            <div className="space-y-4">
+            <div className="space-y-5 pt-4">
+              {/* INPUT */}
               <div className="space-y-2">
-                <Label>Recharge amount</Label>
-                <Input
-                  value={rechargeAmount}
-                  onChange={(event) => setRechargeAmount(event.target.value)}
-                  placeholder="Enter amount"
-                  className="border-white/10 bg-slate-950"
-                />
+                <Label className="text-sm text-gray-700">Recharge amount</Label>
+
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
+                    ₹
+                  </span>
+
+                  <Input
+                    value={rechargeAmount}
+                    onChange={(e) => setRechargeAmount(e.target.value)}
+                    placeholder="Enter amount"
+                    className="pl-7 bg-gray-50 border focus:border-[#16A249]"
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  Enter the amount you want to add to the customer wallet
+                </p>
               </div>
+
+              {/* QUICK AMOUNT BUTTONS (🔥 UX BOOST) */}
+              <div className="flex flex-wrap gap-2">
+                {[500, 1000, 2000, 5000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setRechargeAmount(String(amt))}
+                    className="px-3 py-1.5 text-xs rounded-lg border bg-gray-50 hover:bg-gray-100 text-gray-700"
+                  >
+                    ₹ {amt}
+                  </button>
+                ))}
+              </div>
+
+              {/* PREVIEW */}
+              {rechargeAmount && (
+                <div className="rounded-xl border bg-green-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Recharge summary</p>
+
+                  <p className="text-lg font-semibold text-[#16A249]">
+                    ₹ {Number(rechargeAmount || 0).toLocaleString()}
+                  </p>
+                </div>
+              )}
             </div>
           ) : null}
 
           {activeAction === "team" ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                { key: "firstName", label: "First name" },
-                { key: "lastName", label: "Last name" },
-                { key: "email", label: "Email" },
-                { key: "phone", label: "Phone" },
-                { key: "password", label: "Password" },
-              ].map((field) => (
-                <div key={field.key} className="space-y-2">
-                  <Label>{field.label}</Label>
-                  <Input
-                    type={field.key === "password" ? "password" : "text"}
-                    value={teamForm[field.key as keyof typeof teamForm]}
-                    onChange={(event) =>
-                      setTeamForm((current) => ({
-                        ...current,
-                        [field.key]: event.target.value,
-                      }))
+            <div className="space-y-6 pt-4">
+              {/* SECTION TITLE */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Team member details
+                </p>
+                <p className="text-xs text-gray-500">
+                  Add a new member to manage this customer account
+                </p>
+              </div>
+
+              {/* FORM GRID */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {[
+                  { key: "firstName", label: "First name" },
+                  { key: "lastName", label: "Last name" },
+                  { key: "email", label: "Email" },
+                  { key: "phone", label: "Phone" },
+                  { key: "password", label: "Password" },
+                ].map((field) => (
+                  <div key={field.key} className="space-y-2">
+                    <Label className="text-sm text-gray-700">
+                      {field.label}
+                    </Label>
+
+                    <Input
+                      type={field.key === "password" ? "password" : "text"}
+                      value={teamForm[field.key as keyof typeof teamForm]}
+                      onChange={(e) =>
+                        setTeamForm((prev) => ({
+                          ...prev,
+                          [field.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={`Enter ${field.label.toLowerCase()}`}
+                      className="bg-gray-50 border focus:border-[#16A249]"
+                    />
+                  </div>
+                ))}
+
+                {/* ROLE */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label className="text-sm text-gray-700">Role</Label>
+
+                  <Select
+                    value={teamForm.roleType}
+                    onValueChange={(value) =>
+                      setTeamForm((prev) => ({ ...prev, roleType: value }))
                     }
-                    className="border-white/10 bg-slate-950"
-                  />
+                  >
+                    <SelectTrigger className="bg-gray-50 border focus:border-[#16A249]">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+
+                    <SelectContent>
+                      <SelectItem value="CUSTOMER_AGENT">
+                        <div className="flex flex-col">
+                          <span>Customer Agent</span>
+                          <span className="text-xs text-gray-500">
+                            Can manage chats and campaigns
+                          </span>
+                        </div>
+                      </SelectItem>
+
+                      <SelectItem value="CUSTOMER_ADMIN">
+                        <div className="flex flex-col">
+                          <span>Customer Admin</span>
+                          <span className="text-xs text-gray-500">
+                            Full access including team & billing
+                          </span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              ))}
-              <div className="space-y-2 md:col-span-2">
-                <Label>Role</Label>
-                <Select
-                  value={teamForm.roleType}
-                  onValueChange={(value) =>
-                    setTeamForm((current) => ({ ...current, roleType: value }))
-                  }
-                >
-                  <SelectTrigger className="border-white/10 bg-slate-950">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CUSTOMER_AGENT">Customer Agent</SelectItem>
-                    <SelectItem value="CUSTOMER_ADMIN">Customer Admin</SelectItem>
-                  </SelectContent>
-                </Select>
+              </div>
+
+              {/* INFO BOX (🔥 UX BOOST) */}
+              <div className="rounded-xl border bg-green-50 p-4">
+                <p className="text-xs text-gray-500 mb-1">Note</p>
+                <p className="text-sm text-gray-700">
+                  The user will receive login credentials and can start managing
+                  the account immediately.
+                </p>
               </div>
             </div>
           ) : null}
 
           {activeAction === "message" ? (
-            <div className="space-y-4">
+            <div className="space-y-6 pt-4">
+              {/* SECTION TITLE */}
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  Send test message
+                </p>
+                <p className="text-xs text-gray-500">
+                  Send a quick message to verify WhatsApp delivery
+                </p>
+              </div>
+
+              {/* PHONE INPUT */}
               <div className="space-y-2">
-                <Label>Recipient phone</Label>
+                <Label className="text-sm text-gray-700">Recipient phone</Label>
+
                 <Input
                   value={messageForm.to}
-                  onChange={(event) =>
-                    setMessageForm((current) => ({
-                      ...current,
-                      to: event.target.value,
+                  onChange={(e) =>
+                    setMessageForm((prev) => ({
+                      ...prev,
+                      to: e.target.value,
                     }))
                   }
-                  className="border-white/10 bg-slate-950"
+                  placeholder="+91 9876543210"
+                  className="bg-gray-50 border focus:border-[#16A249]"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Message</Label>
-                <Input
-                  value={messageForm.message}
-                  onChange={(event) =>
-                    setMessageForm((current) => ({
-                      ...current,
-                      message: event.target.value,
-                    }))
-                  }
-                  className="border-white/10 bg-slate-950"
-                />
+
+              {/* MESSAGE INPUT + EMOJI */}
+              <div className="space-y-2 relative">
+                <Label className="text-sm text-gray-700">Message</Label>
+
+                <div className="space-y-2 relative">
+                  <textarea
+                    value={messageForm.message}
+                    onChange={(e) =>
+                      setMessageForm((prev) => ({
+                        ...prev,
+                        message: e.target.value,
+                      }))
+                    }
+                    rows={4}
+                    placeholder="Type your message here..."
+                    className="w-full rounded-xl border bg-gray-50 p-3 pr-10 text-sm focus:border-[#16A249] outline-none"
+                  />
+
+                  {/* EMOJI BUTTON */}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmoji((prev) => !prev)}
+                    className="absolute right-2 bottom-2 p-1 rounded hover:bg-gray-200"
+                  >
+                    <FiSmile className="text-gray-500" />
+                  </button>
+                </div>
+
+                {/* EMOJI PICKER */}
+                {showEmoji && (
+                  <div
+                    ref={emojiRef}
+                    className="absolute bottom-12 right-0 z-[9999]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <EmojiPicker
+                      height={350}
+                      width={300}
+                      onEmojiClick={(emojiData) => {
+                        setMessageForm((prev) => ({
+                          ...prev,
+                          message: prev.message + emojiData.emoji,
+                        }));
+                      }}
+                    />
+                  </div>
+                )}
+
+                {/* CHARACTER COUNT */}
+                <p className="text-xs text-gray-500 text-right">
+                  {messageForm.message.length} characters
+                </p>
+              </div>
+
+              {/* QUICK TEMPLATES */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  "Hello! 😊 This is a test message.",
+                  "Your subscription is active ✅",
+                  "Please contact support 🙏",
+                ].map((msg, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() =>
+                      setMessageForm((prev) => ({
+                        ...prev,
+                        message: msg,
+                      }))
+                    }
+                    className="px-3 py-1.5 text-xs rounded-lg border bg-gray-50 hover:bg-gray-100 text-gray-700"
+                  >
+                    {msg}
+                  </button>
+                ))}
               </div>
             </div>
           ) : null}
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-4 border-t mt-6">
+            {/* CANCEL */}
             <Button
               type="button"
               variant="outline"
-              className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+              className="border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl px-4"
               onClick={closeDialog}
             >
               Cancel
             </Button>
+
+            {/* CONFIRM */}
             <Button
               type="button"
               disabled={submitting}
-              className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+              className="bg-[#16A249] hover:bg-[#12813a] text-white rounded-xl px-5 shadow-sm"
               onClick={submitAction}
             >
-              {submitting ? "Saving..." : "Confirm"}
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Saving...
+                </span>
+              ) : (
+                "Confirm"
+              )}
             </Button>
           </div>
         </DialogContent>

@@ -66,15 +66,17 @@ export default function ResellerCustomerCreate() {
 
   return (
     <ResellerShell title="Create customer workspace" eyebrow="New Onboarding">
-      <Card className="max-w-3xl border-white/10 bg-slate-900/80 text-slate-100">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="h-5 w-5 text-cyan-300" />
+      <Card className="w-full bg-white border shadow-sm">
+        {/* HEADER */}
+        <CardHeader className="border-b bg-gray-50 rounded-t-2xl">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
+            <Plus className="h-5 w-5 text-[#16A249]" />
             Add a new managed customer
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={createCustomer} className="grid gap-4 md:grid-cols-2">
+
+        <CardContent className="pt-6">
+          <form onSubmit={createCustomer} className="grid gap-5 md:grid-cols-2">
             {[
               { key: "companyName", label: "Company name", type: "text" },
               {
@@ -99,7 +101,8 @@ export default function ResellerCustomerCreate() {
                     : "space-y-2"
                 }
               >
-                <Label>{field.label}</Label>
+                <Label className="text-sm text-gray-700">{field.label}</Label>
+
                 <Input
                   type={field.type}
                   value={form[field.key as keyof typeof form]}
@@ -109,26 +112,29 @@ export default function ResellerCustomerCreate() {
                       [field.key]: event.target.value,
                     }))
                   }
-                  className="border-white/10 bg-slate-950"
+                  placeholder={`Enter ${field.label.toLowerCase()}`}
+                  className="bg-gray-50 border focus:border-[#16A249] focus:ring-[#16A249]"
                 />
               </div>
             ))}
 
-            <div className="md:col-span-2 flex gap-3">
+            {/* ACTION BUTTONS */}
+            <div className="md:col-span-2 flex gap-3 pt-2">
               <Button
                 type="submit"
                 disabled={loading}
-                className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+                className="bg-[#16A249] hover:bg-[#12813a] text-white rounded-xl px-5"
               >
                 {loading ? "Creating..." : "Create customer"}
               </Button>
+
               <Button
                 type="button"
                 variant="outline"
-                className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+                className="border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl"
                 onClick={() => navigate("/reseller/customers")}
               >
-                View managed customers
+                View customers
               </Button>
             </div>
           </form>

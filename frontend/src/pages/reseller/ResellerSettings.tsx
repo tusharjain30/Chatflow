@@ -1,109 +1,90 @@
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
 import { ResellerShell } from "@/components/reseller/ResellerShell";
-import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+// TAB COMPONENTS (we'll define below)
+import ProfileTab from "./tabs/ProfileTab";
+import CommissionTab from "./tabs/CommissionTab";
+import BillingTab from "./tabs/BillingTab";
+import TeamTab from "./tabs/TeamTab";
+import NotificationTab from "./tabs/NotificationTab";
+import SecurityTab from "./tabs/SecurityTab";
+import { Smartphone } from "lucide-react";
+import WhatsAppTab from "./tabs/WhatsAppTab";
+import {
+  FiUser,
+  FiPercent,
+  FiCreditCard,
+  FiUsers,
+  FiBell,
+  FiShield,
+} from "react-icons/fi";
+import { FiMessageCircle } from "react-icons/fi";
+
+const tabs = [
+  { key: "profile", label: "Profile", icon: FiUser },
+  { key: "commission", label: "Commission", icon: FiPercent },
+  { key: "billing", label: "Billing", icon: FiCreditCard },
+  { key: "team", label: "Team", icon: FiUsers },
+  { key: "notifications", label: "Notifications", icon: FiBell },
+  { key: "security", label: "Security", icon: FiShield },
+  { key: "whatsapp", label: "WhatsApp API", icon: FiMessageCircle },
+];
 
 export default function ResellerSettings() {
-  const { user, refetchProfile } = useAuth();
-  const { toast } = useToast();
-  const [form, setForm] = useState({
-    companyName: "",
-    firstName: "",
-    lastName: "",
-    phone: "",
-    commissionRate: "",
-  });
-
-  useEffect(() => {
-    setForm({
-      companyName: user?.companyName || "",
-      firstName: user?.firstName || "",
-      lastName: user?.lastName || "",
-      phone: user?.phone || "",
-      commissionRate: user?.commissionRate?.toString() || "0",
-    });
-  }, [user]);
-
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    const response = await fetch(`${API_BASE}/reseller/profile/update`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-      },
-      body: JSON.stringify({
-        companyName: form.companyName,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        phone: form.phone,
-        commissionRate: Number(form.commissionRate),
-      }),
-    });
-
-    const json = await response.json();
-    if (response.ok && json.status === 1) {
-      await refetchProfile();
-      toast({
-        title: "Settings updated",
-        description: "Your reseller profile has been saved.",
-      });
-      return;
-    }
-
-    toast({
-      title: "Update failed",
-      description: json.message || "Unable to update reseller settings",
-      variant: "destructive",
-    });
-  };
+  const [activeTab, setActiveTab] = useState("profile");
 
   return (
-    <ResellerShell title="Reseller settings" eyebrow="Profile & Commercials">
-      <Card className="max-w-3xl border-white/10 bg-slate-900/80 text-slate-100">
-        <CardHeader>
-          <CardTitle>Business profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={save} className="grid gap-4 md:grid-cols-2">
-            {[
-              { key: "companyName", label: "Company name" },
-              { key: "firstName", label: "First name" },
-              { key: "lastName", label: "Last name" },
-              { key: "phone", label: "Phone" },
-              { key: "commissionRate", label: "Commission rate (%)" },
-            ].map((field) => (
-              <div key={field.key} className="space-y-2">
-                <Label>{field.label}</Label>
-                <Input
-                  value={form[field.key as keyof typeof form]}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      [field.key]: event.target.value,
-                    }))
-                  }
-                  className="border-white/10 bg-slate-950"
-                />
-              </div>
-            ))}
+    <ResellerShell title="Settings" eyebrow="Manage your account">
+      <div className="flex gap-6 mt-6">
+        {/* SIDEBAR */}
+        <div className="w-64 space-y-2 bg-gray-50 p-4 border rounded-xl">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.key;
 
-            <div className="md:col-span-2">
-              <Button type="submit" className="bg-cyan-300 text-slate-950 hover:bg-cyan-200">
-                Save reseller settings
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "group flex w-full items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all",
+                  isActive
+                    ? "bg-[#16A249] text-white"
+                    : "text-gray-600 hover:bg-gray-100",
+                )}
+              >
+                {/* ICON */}
+                <Icon
+                  className={cn(
+                    "text-base",
+                    isActive
+                      ? "text-white"
+                      : "text-gray-400 group-hover:text-gray-600",
+                  )}
+                />
+
+                {/* LABEL */}
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* CONTENT */}
+        <Card className="flex-1 bg-white rounded-xl">
+          <CardContent className="p-6">
+            {activeTab === "profile" && <ProfileTab />}
+            {activeTab === "commission" && <CommissionTab />}
+            {activeTab === "billing" && <BillingTab />}
+            {activeTab === "team" && <TeamTab />}
+            {activeTab === "notifications" && <NotificationTab />}
+            {activeTab === "security" && <SecurityTab />}
+            {activeTab === "whatsapp" && <WhatsAppTab />}
+          </CardContent>
+        </Card>
+      </div>
     </ResellerShell>
   );
 }

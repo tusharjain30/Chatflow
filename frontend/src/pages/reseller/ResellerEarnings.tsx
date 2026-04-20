@@ -54,97 +54,126 @@ export default function ResellerEarnings() {
         {[
           {
             label: "Wallet balance",
-            value: `INR ${Number(earnings?.walletBalance ?? 0).toLocaleString()}`,
+            value: `₹ ${Number(earnings?.walletBalance ?? 0).toLocaleString()}`,
             icon: Wallet,
           },
           {
-            label: "Monthly recurring revenue",
-            value: `INR ${Number(earnings?.monthlyRecurringRevenue ?? 0).toLocaleString()}`,
+            label: "MRR",
+            value: `₹ ${Number(earnings?.monthlyRecurringRevenue ?? 0).toLocaleString()}`,
             icon: ReceiptText,
           },
           {
             label: "Monthly commission",
-            value: `INR ${Number(earnings?.monthlyCommission ?? 0).toLocaleString()}`,
+            value: `₹ ${Number(earnings?.monthlyCommission ?? 0).toLocaleString()}`,
             icon: BadgePercent,
           },
           {
             label: "Commission rate",
-            value: `${Number(earnings?.commissionRate ?? 0).toLocaleString()}%`,
+            value: `${Number(earnings?.commissionRate ?? 0)}%`,
             icon: BadgePercent,
           },
         ].map((metric) => (
-          <Card key={metric.label} className="border-white/10 bg-slate-900/80 text-slate-100">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium text-slate-300">{metric.label}</CardTitle>
-              <metric.icon className="h-5 w-5 text-cyan-300" />
+          <Card
+            key={metric.label}
+            className="relative rounded-2xl border bg-white shadow-sm hover:shadow-md transition"
+          >
+            <div className="absolute left-0 top-0 h-full w-1 bg-[#16A249]" />
+
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-xs text-gray-500 uppercase">
+                {metric.label}
+              </CardTitle>
+
+              <div className="p-2 rounded-lg bg-green-50">
+                <metric.icon className="h-4 w-4 text-[#16A249]" />
+              </div>
             </CardHeader>
+
             <CardContent>
-              <p className="text-3xl font-semibold">{metric.value}</p>
+              <p className="text-2xl font-semibold text-gray-900">
+                {metric.value}
+              </p>
             </CardContent>
           </Card>
         ))}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <Card className="border-white/10 bg-slate-900/80 text-slate-100">
+        <Card className="bg-white border shadow-sm rounded-2xl">
           <CardHeader>
-            <CardTitle>6 month trend</CardTitle>
+            <CardTitle className="text-gray-900">6 month trend</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+
+          <CardContent className="space-y-4">
             {earnings?.trend?.map((item) => (
-              <div key={item.month} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-medium">{item.month}</p>
-                  <p className="text-sm text-slate-400">
-                    INR {item.commission.toLocaleString()} commission
+              <div key={item.month} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <p className="text-gray-700 font-medium">{item.month}</p>
+                  <p className="text-[#16A249]">
+                    ₹ {item.commission.toLocaleString()}
                   </p>
                 </div>
-                <div className="mt-3 h-2 rounded-full bg-white/10">
+
+                <div className="h-2 rounded-full bg-gray-100">
                   <div
-                    className="h-2 rounded-full bg-cyan-300"
+                    className="h-2 rounded-full bg-[#16A249]"
                     style={{
                       width: `${Math.min(
                         100,
                         earnings?.monthlyRecurringRevenue
-                          ? (item.revenue / earnings.monthlyRecurringRevenue) * 100
+                          ? (item.revenue / earnings.monthlyRecurringRevenue) *
+                              100
                           : 0,
                       )}%`,
                     }}
                   />
                 </div>
-                <p className="mt-2 text-sm text-slate-300">
-                  INR {item.revenue.toLocaleString()} revenue
+
+                <p className="text-xs text-gray-500">
+                  ₹ {item.revenue.toLocaleString()} revenue
                 </p>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-slate-900/80 text-slate-100">
+        <Card className="bg-white border shadow-sm rounded-2xl">
           <CardHeader>
-            <CardTitle>Recent subscription payouts</CardTitle>
+            <CardTitle className="text-gray-900">Recent payouts</CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-3">
-            {earnings?.payouts?.map((payout) => (
-              <div key={payout.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {earnings?.payouts?.length ? (
+              earnings.payouts.map((payout) => (
+                <div
+                  key={payout.id}
+                  className="flex items-center justify-between rounded-xl border bg-gray-50 px-4 py-3 hover:bg-gray-100 transition"
+                >
                   <div>
-                    <p className="font-semibold">{payout.companyName}</p>
-                    <p className="text-sm text-slate-400">
-                      {payout.planName} • {new Date(payout.startDate).toLocaleDateString()}
+                    <p className="text-sm font-semibold text-gray-900">
+                      {payout.companyName}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {payout.planName} •{" "}
+                      {new Date(payout.startDate).toLocaleDateString()}
                     </p>
                   </div>
+
                   <div className="text-right">
-                    <p className="font-semibold">
+                    <p className="text-sm font-semibold text-gray-900">
                       {payout.currency} {payout.amount.toLocaleString()}
                     </p>
-                    <p className="text-sm text-cyan-300">
-                      Commission: {payout.currency} {payout.commission.toLocaleString()}
+                    <p className="text-xs text-[#16A249]">
+                      +{payout.currency} {payout.commission.toLocaleString()}
                     </p>
                   </div>
                 </div>
+              ))
+            ) : (
+              <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center">
+                <p className="text-sm text-gray-500">No payouts yet</p>
               </div>
-            ))}
+            )}
           </CardContent>
         </Card>
       </div>

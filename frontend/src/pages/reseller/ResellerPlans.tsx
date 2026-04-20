@@ -51,76 +51,115 @@ export default function ResellerPlans() {
     <ResellerShell title="Plan catalogue" eyebrow="Commercial Offers">
       <div className="grid gap-6 xl:grid-cols-2">
         {plans.map((plan) => (
-          <Card key={plan.id} className="border-white/10 bg-slate-900/80 text-slate-100">
-            <CardHeader>
+          <Card className="bg-white border shadow-sm rounded-2xl hover:shadow-md transition-all">
+            {/* HEADER */}
+            <CardHeader className="border-b bg-gray-50 rounded-t-2xl">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5 text-cyan-300" />
+                  <CardTitle className="flex items-center gap-2 text-gray-900">
+                    <CreditCard className="h-5 w-5 text-[#16A249]" />
                     {plan.name}
                   </CardTitle>
-                  <p className="mt-2 text-sm text-slate-400">
-                    {plan.description || "Reseller-ready plan for managed customer accounts."}
+
+                  <p className="mt-2 text-sm text-gray-500 max-w-md">
+                    {plan.description ||
+                      "Reseller-ready plan for managed customer accounts."}
                   </p>
                 </div>
+
+                {/* STATUS */}
                 <span
                   className={`rounded-full px-3 py-1 text-xs font-medium ${
                     plan.isActive
-                      ? "bg-emerald-400/15 text-emerald-300"
-                      : "bg-slate-400/15 text-slate-300"
+                      ? "bg-green-50 text-[#16A249] border border-green-200"
+                      : "bg-gray-100 text-gray-500 border border-gray-200"
                   }`}
                 >
                   {plan.isActive ? "Active" : "Inactive"}
                 </span>
               </div>
             </CardHeader>
-            <CardContent className="space-y-5">
+
+            {/* CONTENT */}
+            <CardContent className="space-y-6 pt-6">
+              {/* PRICE + STATS */}
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Monthly price</p>
-                  <p className="text-3xl font-semibold">
+                  <p className="text-sm text-gray-500">Monthly price</p>
+                  <p className="text-3xl font-semibold text-gray-900">
                     {plan.currency} {plan.price.toLocaleString()}
                   </p>
                 </div>
-                <div className="text-right text-sm text-slate-300">
-                  <p>{plan.stats.activeCustomers} active customers</p>
-                  <p>{plan.currency} {plan.stats.monthlyRevenue.toLocaleString()} MRR</p>
+
+                <div className="text-right text-sm">
+                  <p className="text-gray-600">
+                    {plan.stats.activeCustomers} active customers
+                  </p>
+                  <p className="text-[#16A249] font-medium">
+                    {plan.currency} {plan.stats.monthlyRevenue.toLocaleString()}{" "}
+                    MRR
+                  </p>
                 </div>
               </div>
 
+              {/* FEATURES */}
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-400">Templates</p>
-                  <p className="mt-2 text-2xl font-semibold">{plan.maxTemplates}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-400">Bots</p>
-                  <p className="mt-2 text-2xl font-semibold">{plan.maxBots ?? "Flexible"}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm text-slate-400">Messages</p>
-                  <p className="mt-2 text-2xl font-semibold">{plan.monthlyMessageLimit ?? "Open"}</p>
-                </div>
+                {[
+                  { label: "Templates", value: plan.maxTemplates },
+                  { label: "Bots", value: plan.maxBots ?? "Flexible" },
+                  {
+                    label: "Messages",
+                    value: plan.monthlyMessageLimit ?? "Open",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border bg-gray-50 p-4 text-center"
+                  >
+                    <p className="text-xs text-gray-500 uppercase">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 text-xl font-semibold text-gray-900">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
               </div>
 
+              {/* CUSTOMERS */}
               <div>
-                <p className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-300">
-                  <Layers3 className="h-4 w-4 text-cyan-300" />
-                  Active customers on this plan
+                <p className="mb-3 flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <Layers3 className="h-4 w-4 text-[#16A249]" />
+                  Customers on this plan
                 </p>
+
                 <div className="space-y-2">
                   {plan.customers.length ? (
                     plan.customers.map((customer) => (
-                      <div key={customer.id} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                        <p>{customer.companyName}</p>
-                        <span className="text-sm text-slate-400">
+                      <div
+                        key={customer.id}
+                        className="flex items-center justify-between rounded-xl border bg-gray-50 px-4 py-3 hover:bg-gray-100 transition"
+                      >
+                        <p className="text-sm text-gray-900">
+                          {customer.companyName}
+                        </p>
+
+                        <span
+                          className={`text-xs font-medium ${
+                            customer.isActive
+                              ? "text-[#16A249]"
+                              : "text-gray-400"
+                          }`}
+                        >
                           {customer.isActive ? "Active" : "Paused"}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-dashed border-white/10 p-6 text-center text-slate-400">
-                      No active customers on this plan yet.
+                    <div className="rounded-xl border border-dashed border-gray-300 p-6 text-center">
+                      <p className="text-sm text-gray-500">
+                        No customers on this plan yet
+                      </p>
                     </div>
                   )}
                 </div>

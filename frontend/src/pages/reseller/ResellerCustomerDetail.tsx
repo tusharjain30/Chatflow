@@ -112,7 +112,8 @@ export default function ResellerCustomerDetail() {
     } catch (error) {
       toast({
         title: "Save failed",
-        description: error instanceof Error ? error.message : "Unable to save customer",
+        description:
+          error instanceof Error ? error.message : "Unable to save customer",
         variant: "destructive",
       });
     } finally {
@@ -121,11 +122,14 @@ export default function ResellerCustomerDetail() {
   };
 
   return (
-    <ResellerShell title={detail?.companyName || "Customer detail"} eyebrow="Managed Account">
+    <ResellerShell
+      title={detail?.companyName || "Customer detail"}
+      eyebrow="Managed Account"
+    >
       <div className="mb-6">
         <Button
           variant="outline"
-          className="border-white/15 bg-transparent text-slate-100 hover:bg-white/10"
+          className="border-gray-300 text-gray-700 hover:bg-gray-100 rounded-xl"
           onClick={() => navigate("/reseller/customers")}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -134,12 +138,15 @@ export default function ResellerCustomerDetail() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
-        <Card className="border-white/10 bg-slate-900/80 text-slate-100">
-          <CardHeader>
-            <CardTitle>Edit managed customer</CardTitle>
+        <Card className="bg-white border shadow-sm rounded-2xl">
+          <CardHeader className="border-b bg-gray-50 rounded-t-2xl">
+            <CardTitle className="text-gray-900">
+              Edit managed customer
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={save} className="grid gap-4 md:grid-cols-2">
+
+          <CardContent className="pt-6">
+            <form onSubmit={save} className="grid gap-5 md:grid-cols-2">
               {[
                 { key: "companyName", label: "Company name" },
                 { key: "ownerFirstName", label: "Owner first name" },
@@ -149,7 +156,11 @@ export default function ResellerCustomerDetail() {
               ].map((field) => (
                 <div
                   key={field.key}
-                  className={field.key === "companyName" ? "space-y-2 md:col-span-2" : "space-y-2"}
+                  className={
+                    field.key === "companyName"
+                      ? "space-y-2 md:col-span-2"
+                      : "space-y-2"
+                  }
                 >
                   <Label>{field.label}</Label>
                   <Input
@@ -160,7 +171,7 @@ export default function ResellerCustomerDetail() {
                         [field.key]: event.target.value,
                       }))
                     }
-                    className="border-white/10 bg-slate-950"
+                    className="bg-gray-50 border focus:border-[#16A249]"
                   />
                 </div>
               ))}
@@ -169,7 +180,7 @@ export default function ResellerCustomerDetail() {
                 <Button
                   type="submit"
                   disabled={saving}
-                  className="bg-cyan-300 text-slate-950 hover:bg-cyan-200"
+                  className="bg-[#16A249] hover:bg-[#12813a] text-white rounded-xl px-5"
                 >
                   <Save className="mr-2 h-4 w-4" />
                   {saving ? "Saving..." : "Save changes"}
@@ -180,43 +191,59 @@ export default function ResellerCustomerDetail() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="border-white/10 bg-slate-900/80 text-slate-100">
+          <Card className="bg-white border shadow-sm rounded-2xl">
             <CardHeader>
-              <CardTitle>Account summary</CardTitle>
+              <CardTitle className="text-gray-900">Account summary</CardTitle>
             </CardHeader>
+
             <CardContent className="grid gap-4 sm:grid-cols-3">
               {[
                 { label: "Contacts", value: detail?._count.contacts ?? 0 },
                 { label: "Templates", value: detail?._count.templates ?? 0 },
                 { label: "Campaigns", value: detail?._count.campaigns ?? 0 },
               ].map((item) => (
-                <div key={item.label} className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-sm text-slate-400">{item.label}</p>
-                  <p className="mt-2 text-3xl font-semibold">{item.value}</p>
+                <div
+                  key={item.label}
+                  className="rounded-xl border bg-gray-50 p-5 text-center"
+                >
+                  <p className="text-sm text-gray-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-semibold text-green-600">
+                    {item.value}
+                  </p>
                 </div>
               ))}
             </CardContent>
           </Card>
 
-          <Card className="border-white/10 bg-slate-900/80 text-slate-100">
+          <Card className="bg-white border shadow-sm rounded-2xl">
             <CardHeader>
-              <CardTitle>Subscription</CardTitle>
+              <CardTitle className="text-gray-900">Subscription</CardTitle>
             </CardHeader>
+
             <CardContent className="space-y-3">
               {detail?.subscriptions?.length ? (
                 detail.subscriptions.map((subscription) => (
-                  <div key={subscription.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                    <p className="font-semibold">{subscription.plan.name}</p>
-                    <p className="text-sm text-slate-400">
-                      {subscription.plan.currency} {subscription.plan.price.toLocaleString()} / month
+                  <div
+                    key={subscription.id}
+                    className="rounded-xl border bg-gray-50 p-4"
+                  >
+                    <p className="font-semibold text-gray-900">
+                      {subscription.plan.name}
                     </p>
-                    <p className="mt-2 text-sm text-slate-400">
-                      Started {new Date(subscription.startDate).toLocaleDateString()}
+
+                    <p className="text-sm text-green-600">
+                      {subscription.plan.currency}{" "}
+                      {subscription.plan.price.toLocaleString()} / month
+                    </p>
+
+                    <p className="mt-2 text-sm text-gray-500">
+                      Started{" "}
+                      {new Date(subscription.startDate).toLocaleDateString()}
                     </p>
                   </div>
                 ))
               ) : (
-                <div className="rounded-3xl border border-dashed border-white/10 p-8 text-center text-slate-400">
+                <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center text-gray-500">
                   No active subscription assigned.
                 </div>
               )}
