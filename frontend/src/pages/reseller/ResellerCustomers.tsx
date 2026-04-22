@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import { ResellerShell } from "@/components/reseller/ResellerShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import EmojiPicker from "emoji-picker-react";
 import { FiRotateCcw, FiSmile } from "react-icons/fi";
 import {
@@ -98,7 +99,14 @@ type PlanOption = {
   currency: string;
 };
 
-type ActionType = "changePlan" | "recharge" | "team" | "message" | null;
+type ActionType =
+  | "changePlan"
+  | "recharge"
+  | "team"
+  | "message"
+  | "bulkChangePlan"
+  | "bulkCampaign"
+  | null;
 
 export default function ResellerCustomers() {
   const { toast } = useToast();
@@ -122,6 +130,7 @@ export default function ResellerCustomers() {
   );
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [activeAction, setActiveAction] = useState<ActionType>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [changePlanId, setChangePlanId] = useState("");
   const [rechargeAmount, setRechargeAmount] = useState("");
@@ -139,6 +148,9 @@ export default function ResellerCustomers() {
   });
 
   const token = localStorage.getItem("auth_token");
+  const selectedCustomers = items.filter((item) => selectedIds.includes(item.id));
+  const allOnPageSelected = items.length > 0 && selectedIds.length === items.length;
+  const hasSomeSelected = selectedIds.length > 0 && !allOnPageSelected;
 
   const getSmartStatuses = (item: CustomerItem) => {
     const badges: Array<{ label: string; className: string }> = [];
@@ -242,6 +254,11 @@ export default function ResellerCustomers() {
 
     if (customersResponse.ok && customersJson.status === 1) {
       setItems(customersJson.data.items);
+      setSelectedIds((current) =>
+        current.filter((id) =>
+          customersJson.data.items.some((item: CustomerItem) => item.id === id),
+        ),
+      );
     }
 
     if (statsResponse.ok && statsJson.status === 1) {
@@ -323,6 +340,104 @@ export default function ResellerCustomers() {
     }
   };
 
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIds(checked ? items.map((item) => item.id) : []);
+  };
+
+  const toggleSelectCustomer = (accountId: string, checked: boolean) => {
+    setSelectedIds((current) =>
+      checked ? [...new Set([...current, accountId])] : current.filter((id) => id !== accountId),
+    );
+  };
+
+  const openBulkPlanDialog = () => {
+    setChangePlanId("");
+    setActiveAction("bulkChangePlan");
+  };
+
+  const openBulkCampaignDialog = () => {
+    setMessageForm({
+      to: "",
+      message: "",
+    });
+    setActiveAction("bulkCampaign");
+  };
+
+  const handleBulkPause = async () => {
+    if (!selectedIds.length) return;
+
+    const activeCount = selectedCustomers.filter((item) => item.isActive).length;
+    if (!activeCount) {
+      toast({
+        title: "No active customers selected",
+        description: "Choose at least one active customer to pause.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const result = await Swal.fire({
+      title: "Pause selected customers?",
+      text: `${activeCount} selected customer${activeCount > 1 ? "s" : ""} will be paused.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#16A249",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Yes, pause them",
+      reverseButtons: true,
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      Swal.fire({
+        title: "Processing...",
+        text: "Please wait",
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      const response = await fetch(`${API_BASE}/reseller/customers/bulk-status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          accountIds: selectedCustomers
+            .filter((item) => item.isActive)
+            .map((item) => item.id),
+          isActive: false,
+        }),
+      });
+
+      const json = await response.json();
+
+      if (!response.ok || json.status !== 1) {
+        throw new Error(json.message || "Unable to pause selected customers");
+      }
+
+      await fetchCustomers(search);
+      setSelectedIds([]);
+
+      Swal.fire({
+        icon: "success",
+        title: "Customers paused",
+        text: `${json.data.updatedCount || activeCount} customer account${activeCount > 1 ? "s were" : " was"} paused successfully.`,
+        confirmButtonColor: "#16A249",
+      });
+    } catch (error: any) {
+      Swal.fire({
+        icon: "error",
+        title: "Failed",
+        text: error.message || "Something went wrong",
+        confirmButtonColor: "#d33",
+      });
+    }
+  };
+
   const closeDialog = () => {
     setActiveAction(null);
     setSelectedCustomer(null);
@@ -343,31 +458,48 @@ export default function ResellerCustomers() {
   };
 
   const submitAction = async () => {
-    if (!selectedCustomer || !activeAction) return;
+    if (!activeAction) return;
+
+    if (
+      ["changePlan", "recharge", "team", "message"].includes(activeAction) &&
+      !selectedCustomer
+    ) {
+      return;
+    }
 
     const endpointMap: Record<Exclude<ActionType, null>, string> = {
       changePlan: "change-plan",
       recharge: "recharge",
       team: "add-team-member",
       message: "send-test-message",
+      bulkChangePlan: "bulk-change-plan",
+      bulkCampaign: "bulk-send-campaign",
     };
 
     const bodyMap = {
       changePlan: {
-        accountId: selectedCustomer.id,
+        accountId: selectedCustomer!.id,
         planId: changePlanId,
       },
       recharge: {
-        accountId: selectedCustomer.id,
+        accountId: selectedCustomer!.id,
         amount: Number(rechargeAmount),
       },
       team: {
-        accountId: selectedCustomer.id,
+        accountId: selectedCustomer!.id,
         ...teamForm,
       },
       message: {
-        accountId: selectedCustomer.id,
+        accountId: selectedCustomer!.id,
         ...messageForm,
+      },
+      bulkChangePlan: {
+        accountIds: selectedIds,
+        planId: changePlanId,
+      },
+      bulkCampaign: {
+        accountIds: selectedIds,
+        message: messageForm.message,
       },
     };
 
@@ -398,10 +530,17 @@ export default function ResellerCustomers() {
               ? "Credits added successfully."
               : activeAction === "team"
                 ? "Team member added successfully."
-                : "Test message recorded successfully.",
+                : activeAction === "message"
+                  ? "Test message recorded successfully."
+                  : activeAction === "bulkChangePlan"
+                    ? "Selected customers were moved to the new plan."
+                    : "Campaign queued for selected customers.",
       });
 
       await fetchCustomers(search);
+      if (activeAction === "bulkChangePlan" || activeAction === "bulkCampaign") {
+        setSelectedIds([]);
+      }
       closeDialog();
     } catch (error) {
       toast({
@@ -632,20 +771,71 @@ export default function ResellerCustomers() {
 
       <Card className="bg-white">
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-[#16A249]" />
-            Managed customers
-          </CardTitle>
+          <div className="space-y-3 w-full">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-[#16A249]" />
+                Managed customers
+              </CardTitle>
 
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") fetchCustomers(search);
-            }}
-            placeholder="Search company or owner"
-            className="max-w-sm bg-gray-50 border focus:border-[#16A249]"
-          />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") fetchCustomers(search);
+                }}
+                placeholder="Search company or owner"
+                className="max-w-sm bg-gray-50 border focus:border-[#16A249]"
+              />
+            </div>
+
+            {selectedIds.length ? (
+              <div className="flex flex-col gap-3 rounded-2xl border border-green-200 bg-green-50/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {selectedIds.length} customer{selectedIds.length > 1 ? "s" : ""} selected
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Pause multiple customers, assign a plan, or send a campaign in one go.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-red-200 bg-white text-red-600 hover:bg-red-50"
+                    onClick={handleBulkPause}
+                  >
+                    Pause multiple customers
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-green-200 bg-white text-[#16A249] hover:bg-green-100"
+                    onClick={openBulkPlanDialog}
+                  >
+                    Assign plan
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-[#16A249] text-white hover:bg-[#12813a]"
+                    onClick={openBulkCampaignDialog}
+                  >
+                    Send campaign
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-gray-500 hover:bg-white"
+                    onClick={() => setSelectedIds([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+          </div>
         </CardHeader>
 
         <CardContent className="overflow-x-auto">
@@ -653,6 +843,13 @@ export default function ResellerCustomers() {
             {/* HEADER */}
             <thead>
               <tr className="text-left text-gray-500 border-b">
+                <th className="py-3 pr-3">
+                  <Checkbox
+                    checked={allOnPageSelected ? true : hasSomeSelected ? "indeterminate" : false}
+                    onCheckedChange={(checked) => toggleSelectAll(checked === true)}
+                    aria-label="Select all customers"
+                  />
+                </th>
                 <th className="py-3">Company</th>
                 <th>Plan</th>
                 <th>Users</th>
@@ -669,8 +866,19 @@ export default function ResellerCustomers() {
               {items.map((item) => (
                 <tr
                   key={item.id}
-                  className="border-b hover:bg-gray-50 transition"
+                  className={`border-b transition ${
+                    selectedIds.includes(item.id) ? "bg-green-50/60" : "hover:bg-gray-50"
+                  }`}
                 >
+                  <td className="py-4 pr-3">
+                    <Checkbox
+                      checked={selectedIds.includes(item.id)}
+                      onCheckedChange={(checked) =>
+                        toggleSelectCustomer(item.id, checked === true)
+                      }
+                      aria-label={`Select ${item.companyName}`}
+                    />
+                  </td>
                   {/* COMPANY */}
                   <td className="py-4">
                     <p className="font-medium text-gray-900">
@@ -858,16 +1066,28 @@ export default function ResellerCustomers() {
             <DialogTitle>
               {activeAction === "changePlan"
                 ? "Change plan"
+                : activeAction === "bulkChangePlan"
+                  ? "Assign plan to selected customers"
                 : activeAction === "recharge"
                   ? "Recharge / Add credits"
                   : activeAction === "team"
                     ? "Add team member"
-                    : "Send test message"}
+                    : activeAction === "bulkCampaign"
+                      ? "Send campaign to selected customers"
+                      : "Send test message"}
             </DialogTitle>
           </DialogHeader>
 
-          {activeAction === "changePlan" ? (
+          {activeAction === "changePlan" || activeAction === "bulkChangePlan" ? (
             <div className="space-y-5 pt-4">
+              {activeAction === "bulkChangePlan" ? (
+                <div className="rounded-xl border bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Selected customers</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedIds.length} account{selectedIds.length > 1 ? "s" : ""} will receive the new plan.
+                  </p>
+                </div>
+              ) : null}
               {/* LABEL */}
               <div className="space-y-2">
                 <Label className="text-sm text-gray-700">Select plan</Label>
@@ -1058,34 +1278,46 @@ export default function ResellerCustomers() {
             </div>
           ) : null}
 
-          {activeAction === "message" ? (
+          {activeAction === "message" || activeAction === "bulkCampaign" ? (
             <div className="space-y-6 pt-4">
               {/* SECTION TITLE */}
               <div>
                 <p className="text-sm font-semibold text-gray-900">
-                  Send test message
+                  {activeAction === "bulkCampaign"
+                    ? "Send bulk campaign"
+                    : "Send test message"}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Send a quick message to verify WhatsApp delivery
+                  {activeAction === "bulkCampaign"
+                    ? `The message will be queued for ${selectedIds.length} selected customer account${selectedIds.length > 1 ? "s" : ""}.`
+                    : "Send a quick message to verify WhatsApp delivery"}
                 </p>
               </div>
 
-              {/* PHONE INPUT */}
-              <div className="space-y-2">
-                <Label className="text-sm text-gray-700">Recipient phone</Label>
+              {activeAction === "message" ? (
+                <div className="space-y-2">
+                  <Label className="text-sm text-gray-700">Recipient phone</Label>
 
-                <Input
-                  value={messageForm.to}
-                  onChange={(e) =>
-                    setMessageForm((prev) => ({
-                      ...prev,
-                      to: e.target.value,
-                    }))
-                  }
-                  placeholder="+91 9876543210"
-                  className="bg-gray-50 border focus:border-[#16A249]"
-                />
-              </div>
+                  <Input
+                    value={messageForm.to}
+                    onChange={(e) =>
+                      setMessageForm((prev) => ({
+                        ...prev,
+                        to: e.target.value,
+                      }))
+                    }
+                    placeholder="+91 9876543210"
+                    className="bg-gray-50 border focus:border-[#16A249]"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-xl border bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Recipients</p>
+                  <p className="text-sm text-gray-700">
+                    Campaign will be sent to each selected customer's primary owner phone.
+                  </p>
+                </div>
+              )}
 
               {/* MESSAGE INPUT + EMOJI */}
               <div className="space-y-2 relative">
