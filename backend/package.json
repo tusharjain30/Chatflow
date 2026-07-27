@@ -9,8 +9,11 @@
         "build": "tsc",
         "start": "tsx src/server.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
-        "seed": "node src/prisma/seed.js",
-        "postinstall": "prisma generate"
+        "postinstall": "prisma generate",
+        "db:seed": "tsx src/prisma/seed.ts",
+        "db:reset": "npx prisma db reset",
+        "db:deploy": "npx prisma migrate deploy",
+        "db:generate": "npx prisma generate"
     },
     "keywords": [],
     "author": "",
@@ -37,9 +40,10 @@
     },
     "prisma": {
         "schema": "src/prisma/schema.prisma",
-        "seed": "node src/prisma/seed.js"
+        "seed": "tsx src/prisma/seed.ts"
     },
     "devDependencies": {
+        "@types/bcrypt": "^6.0.0",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/node": "^26.1.1",

@@ -1,4 +1,8 @@
-const prisma = require("../config/prisma");
+import bcrypt from "bcrypt";
+import { Prisma } from "@prisma/client";
+import "dotenv/config";
+
+import prisma from "../config/prisma";
 
 const OWNER_ROLE_NAME = "CUSTOMER_OWNER";
 const OWNER_EMAIL = "owner@chatflow-demo.com";
@@ -11,6 +15,9 @@ const RESELLER_EMAIL = "reseller@chatflow-demo.com";
 const RESELLER_PHONE = "919899887766";
 const RESELLER_USERNAME = "chatflow_reseller_demo";
 const RESELLER_PASSWORD = "Reseller@123";
+
+const BCRYPT_ROUNDS = 10;
+
 const PLAN_DEFINITIONS = [
   {
     name: "Starter",
@@ -65,7 +72,7 @@ const CUSTOM_FIELDS = [
   { name: "Last Follow Up", key: "last_follow_up", type: "date" },
 ];
 
-const TEMPLATE_DEFINITIONS = [
+const TEMPLATE_DEFINITIONS: TemplateDef[] = [
   {
     name: "welcome_offer_template",
     category: "MARKETING",
@@ -219,6 +226,7 @@ const CONTACT_DEFINITIONS = [
     },
   },
 ];
+
 const RESELLER_CUSTOMER_DEFINITIONS = [
   {
     companyName: "Northstar Realty",
@@ -260,7 +268,7 @@ const RESELLER_CUSTOMER_DEFINITIONS = [
 
 function extractVariables(text = "") {
   const regex = /\{\{\s*(\d+)\s*\}\}/g;
-  const variables = [];
+  const variables: string[] = [];
   let match;
 
   while ((match = regex.exec(text)) !== null) {
@@ -270,19 +278,39 @@ function extractVariables(text = "") {
   return variables.length ? variables : null;
 }
 
+type TemplateCategory = "MARKETING" | "UTILITY" | "AUTHENTICATION";
+type TemplateStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED";
+
+type TemplateDef = {
+  name: string;
+  category: TemplateCategory;
+  language: string;
+  status: TemplateStatus;
+  body: string;
+  header?: { type: string; text?: string; mediaHandle?: string } | null;
+  footer?: { text: string } | null;
+  buttons?: Array<{
+    type: string;
+    text: string;
+    url?: string;
+    phoneNumber?: string;
+  }> | null;
+  variableSamples?: Record<string, string>;
+};
+
 function buildTemplateComponents({
   body,
   header,
   footer,
   buttons,
   variableSamples = {},
-}) {
-  const components = [];
+}: TemplateDef) {
+  const components: any[] = [];
   const bodyVariables = extractVariables(body);
 
   if (header) {
     if (header.type === "TEXT") {
-      const headerComponent = {
+      const headerComponent: Record<string, any> = {
         type: "HEADER",
         format: "TEXT",
         text: header.text,
@@ -314,7 +342,7 @@ function buildTemplateComponents({
     }
   }
 
-  const bodyComponent = {
+  const bodyComponent: Record<string, any> = {
     type: "BODY",
     text: body,
   };
@@ -322,7 +350,7 @@ function buildTemplateComponents({
   if (bodyVariables?.length) {
     bodyComponent.example = {
       body_text: [
-        bodyVariables.map((token) => variableSamples[token] || token),
+        bodyVariables.map((token: string) => variableSamples[token] || token),
       ],
     };
   }
@@ -387,8 +415,8 @@ async function ensureOwnerRole() {
   });
 }
 
-async function ensureOwnerAccount(roleId) {
-  const hashedPassword = await bcrypt.hash(OWNER_PASSWORD, 10);
+async function ensureOwnerAccount(roleId: string) {
+  const hashedPassword = await bcrypt.hash(OWNER_PASSWORD, BCRYPT_ROUNDS);
 
   const existingOwner = await prisma.user.findFirst({
     where: {
@@ -464,7 +492,7 @@ async function ensureOwnerAccount(roleId) {
 }
 
 async function ensureReseller() {
-  const hashedPassword = await bcrypt.hash(RESELLER_PASSWORD, 10);
+  const hashedPassword = await bcrypt.hash(RESELLER_PASSWORD, BCRYPT_ROUNDS);
 
   const existingReseller = await prisma.reseller.findFirst({
     where: {
@@ -515,7 +543,7 @@ async function ensureReseller() {
 }
 
 async function seedPlans() {
-  const plansByName = new Map();
+  const plansByName = new Map<string, Awaited<ReturnType<typeof prisma.plan.upsert>>>();
 
   for (const planDef of PLAN_DEFINITIONS) {
     const plan = await prisma.plan.upsert({
@@ -549,7 +577,7 @@ async function seedPlans() {
   return plansByName;
 }
 
-async function ensureAccountSubscription(accountId, planId, startDate) {
+async function ensureAccountSubscription(accountId: string, planId: string, startDate: Date) {
   const existing = await prisma.subscription.findFirst({
     where: {
       accountId,
@@ -585,9 +613,13 @@ async function ensureAccountSubscription(accountId, planId, startDate) {
   });
 }
 
-async function seedResellerManagedCustomers(resellerId, roleId, plansByName) {
+async function seedResellerManagedCustomers(
+  resellerId: string,
+  roleId: string,
+  plansByName: Map<string, { id: string }>,
+) {
   for (const customerDef of RESELLER_CUSTOMER_DEFINITIONS) {
-    const hashedPassword = await bcrypt.hash(customerDef.password, 10);
+    const hashedPassword = await bcrypt.hash(customerDef.password, BCRYPT_ROUNDS);
 
     const existingOwner = await prisma.user.findFirst({
       where: {
@@ -602,7 +634,7 @@ async function seedResellerManagedCustomers(resellerId, roleId, plansByName) {
       },
     });
 
-    let accountId;
+    let accountId: string;
 
     if (existingOwner?.accountId) {
       const owner = await prisma.user.update({
@@ -670,17 +702,13 @@ async function seedResellerManagedCustomers(resellerId, roleId, plansByName) {
 
     const plan = plansByName.get(customerDef.planName);
     if (plan) {
-      await ensureAccountSubscription(
-        accountId,
-        plan.id,
-        customerDef.startDate,
-      );
+      await ensureAccountSubscription(accountId, plan.id, customerDef.startDate);
     }
   }
 }
 
-async function seedContactGroups(accountId, ownerId) {
-  const groupsByTitle = new Map();
+async function seedContactGroups(accountId: string, ownerId: string) {
+  const groupsByTitle = new Map<string, { id: string; title: string }>();
 
   for (const group of CONTACT_GROUPS) {
     const existing = await prisma.contactGroup.findFirst({
@@ -695,33 +723,33 @@ async function seedContactGroups(accountId, ownerId) {
 
     const savedGroup = existing
       ? await prisma.contactGroup.update({
-          where: { id: existing.id },
-          data: {
-            description: group.description,
-            createdByUserId: existing.createdByUserId || ownerId,
-            isArchived: false,
-            isDeleted: false,
-          },
-        })
+        where: { id: existing.id },
+        data: {
+          description: group.description,
+          createdByUserId: existing.createdByUserId || ownerId,
+          isArchived: false,
+          isDeleted: false,
+        },
+      })
       : await prisma.contactGroup.create({
-          data: {
-            accountId,
-            createdByUserId: ownerId,
-            title: group.title,
-            description: group.description,
-            isArchived: false,
-            isDeleted: false,
-          },
-        });
+        data: {
+          accountId,
+          createdByUserId: ownerId,
+          title: group.title,
+          description: group.description,
+          isArchived: false,
+          isDeleted: false,
+        },
+      });
 
-    groupsByTitle.set(savedGroup.title, savedGroup);
+    groupsByTitle.set(savedGroup.title, { id: savedGroup.id, title: savedGroup.title });
   }
 
   return groupsByTitle;
 }
 
-async function seedCustomFields(accountId) {
-  const fieldsByKey = new Map();
+async function seedCustomFields(accountId: string) {
+  const fieldsByKey = new Map<string, { id: string; key: string }>();
 
   for (const field of CUSTOM_FIELDS) {
     const savedField = await prisma.contactCustomField.upsert({
@@ -745,14 +773,19 @@ async function seedCustomFields(accountId) {
       },
     });
 
-    fieldsByKey.set(savedField.key, savedField);
+    fieldsByKey.set(savedField.key, { id: savedField.id, key: savedField.key });
   }
 
   return fieldsByKey;
 }
 
-async function seedContacts(accountId, ownerId, groupsByTitle, fieldsByKey) {
-  const contacts = [];
+async function seedContacts(
+  accountId: string,
+  ownerId: string,
+  groupsByTitle: Map<string, { id: string; title: string }>,
+  fieldsByKey: Map<string, { id: string; key: string }>,
+) {
+  const contacts: Array<{ id: string; phone: string }> = [];
 
   for (const contactDef of CONTACT_DEFINITIONS) {
     const contact = await prisma.contact.upsert({
@@ -794,7 +827,7 @@ async function seedContacts(accountId, ownerId, groupsByTitle, fieldsByKey) {
 
     const groupIds = contactDef.groups
       .map((title) => groupsByTitle.get(title))
-      .filter(Boolean)
+      .filter((g): g is { id: string; title: string } => Boolean(g))
       .map((group) => group.id);
 
     if (groupIds.length) {
@@ -834,14 +867,17 @@ async function seedContacts(accountId, ownerId, groupsByTitle, fieldsByKey) {
       });
     }
 
-    contacts.push(contact);
+    contacts.push({ id: contact.id, phone: contact.phone });
   }
 
   return contacts;
 }
 
-async function seedTemplates(accountId, ownerId) {
-  const templatesByName = new Map();
+async function seedTemplates(accountId: string, ownerId: string) {
+  const templatesByName = new Map<
+    string,
+    { id: string; name: string }
+  >();
 
   for (const templateDef of TEMPLATE_DEFINITIONS) {
     const components = buildTemplateComponents(templateDef);
@@ -874,12 +910,12 @@ async function seedTemplates(accountId, ownerId) {
         createdByUserId: ownerId,
         category: templateDef.category,
         body: templateDef.body,
-        header: templateDef.header,
-        footer: templateDef.footer,
-        buttons: templateDef.buttons,
-        components,
-        mediaFiles: null,
-        builderData,
+        header: templateDef.header === undefined ? Prisma.JsonNull : (templateDef.header as any),
+        footer: templateDef.footer === undefined ? Prisma.JsonNull : (templateDef.footer as any),
+        buttons: (templateDef.buttons ?? Prisma.JsonNull) as any,
+        components: components as any,
+        mediaFiles: Prisma.JsonNull,
+        builderData: builderData as any,
         status: templateDef.status,
         metaTemplateId: null,
         rejectReason: null,
@@ -893,12 +929,12 @@ async function seedTemplates(accountId, ownerId) {
         category: templateDef.category,
         language: templateDef.language,
         body: templateDef.body,
-        header: templateDef.header,
-        footer: templateDef.footer,
-        buttons: templateDef.buttons,
-        components,
-        mediaFiles: null,
-        builderData,
+        header: templateDef.header === undefined ? Prisma.JsonNull : (templateDef.header as any),
+        footer: templateDef.footer === undefined ? Prisma.JsonNull : (templateDef.footer as any),
+        buttons: (templateDef.buttons ?? Prisma.JsonNull) as any,
+        components: components as any,
+        mediaFiles: Prisma.JsonNull,
+        builderData: builderData as any,
         status: templateDef.status,
         metaTemplateId: null,
         rejectReason: null,
@@ -907,18 +943,18 @@ async function seedTemplates(accountId, ownerId) {
       },
     });
 
-    templatesByName.set(template.name, template);
+    templatesByName.set(template.name, { id: template.id, name: template.name });
   }
 
   return templatesByName;
 }
 
 async function seedCampaigns(
-  accountId,
-  ownerId,
-  templatesByName,
-  contacts,
-  groupsByTitle,
+  accountId: string,
+  ownerId: string,
+  templatesByName: Map<string, { id: string; name: string }>,
+  contacts: Array<{ id: string; phone: string }>,
+  groupsByTitle: Map<string, { id: string; title: string }>,
 ) {
   const welcomeTemplate = templatesByName.get("welcome_offer_template");
   const reminderTemplate = templatesByName.get("payment_reminder_template");
@@ -930,10 +966,29 @@ async function seedCampaigns(
     contacts.map((contact) => [contact.phone, contact]),
   );
 
-  const getContactIds = (phones = []) =>
-    phones.map((phone) => contactsByPhone.get(phone)?.id).filter(Boolean);
+  const getContactIds = (phones: string[] = []) =>
+    phones
+      .map((phone) => contactsByPhone.get(phone)?.id)
+      .filter((id): id is string => Boolean(id));
 
-  const metricsFromAudienceStatuses = (audienceStatuses = []) => ({
+  type CampaignStatus =
+    | "DRAFT"
+    | "SCHEDULED"
+    | "RUNNING"
+    | "PAUSED"
+    | "COMPLETED"
+    | "FAILED"
+    | "CANCELLED";
+
+  type ContactStatus =
+    | "PENDING"
+    | "SENT"
+    | "DELIVERED"
+    | "READ"
+    | "FAILED"
+    | "SKIPPED";
+
+  const metricsFromAudienceStatuses = (audienceStatuses: ContactStatus[] = []) => ({
     totalContacts: audienceStatuses.length,
     sentCount: audienceStatuses.filter((status) =>
       ["SENT", "DELIVERED", "READ", "FAILED"].includes(status),
@@ -942,11 +997,27 @@ async function seedCampaigns(
       ["DELIVERED", "READ"].includes(status),
     ).length,
     readCount: audienceStatuses.filter((status) => status === "READ").length,
-    failedCount: audienceStatuses.filter((status) => status === "FAILED")
-      .length,
+    failedCount: audienceStatuses.filter((status) => status === "FAILED").length,
   });
 
-  const campaignDefinitions = [
+  type CampaignDef = {
+    name: string;
+    description: string;
+    templateId?: string;
+    isScheduled: boolean;
+    scheduledAt: Date | null;
+    startedAt: Date | null;
+    completedAt: Date | null;
+    batchSize: number;
+    delayInSeconds: number;
+    status: CampaignStatus;
+    logMessage: string;
+    audienceContactIds?: string[];
+    audienceGroupId?: string | null;
+    audienceStatuses: ContactStatus[];
+  };
+
+  const campaignDefinitions: CampaignDef[] = [
     {
       name: "April Welcome Draft",
       description: "Draft welcome campaign ready for audience curation.",
@@ -1094,48 +1165,48 @@ async function seedCampaigns(
 
     const campaign = existing
       ? await prisma.campaign.update({
-          where: { id: existing.id },
-          data: {
-            description: campaignDef.description,
-            templateId: campaignDef.templateId,
-            isScheduled: campaignDef.isScheduled,
-            scheduledAt: campaignDef.scheduledAt,
-            startedAt: campaignDef.startedAt,
-            completedAt: campaignDef.completedAt,
-            batchSize: campaignDef.batchSize,
-            delayInSeconds: campaignDef.delayInSeconds,
-            status: campaignDef.status,
-            totalContacts: audienceMetrics.totalContacts,
-            sentCount: audienceMetrics.sentCount,
-            deliveredCount: audienceMetrics.deliveredCount,
-            readCount: audienceMetrics.readCount,
-            failedCount: audienceMetrics.failedCount,
-            createdByUserId: ownerId,
-            isDeleted: false,
-          },
-        })
+        where: { id: existing.id },
+        data: {
+          description: campaignDef.description,
+          templateId: campaignDef.templateId,
+          isScheduled: campaignDef.isScheduled,
+          scheduledAt: campaignDef.scheduledAt,
+          startedAt: campaignDef.startedAt,
+          completedAt: campaignDef.completedAt,
+          batchSize: campaignDef.batchSize,
+          delayInSeconds: campaignDef.delayInSeconds,
+          status: campaignDef.status,
+          totalContacts: audienceMetrics.totalContacts,
+          sentCount: audienceMetrics.sentCount,
+          deliveredCount: audienceMetrics.deliveredCount,
+          readCount: audienceMetrics.readCount,
+          failedCount: audienceMetrics.failedCount,
+          createdByUserId: ownerId,
+          isDeleted: false,
+        },
+      })
       : await prisma.campaign.create({
-          data: {
-            accountId,
-            name: campaignDef.name,
-            description: campaignDef.description,
-            templateId: campaignDef.templateId,
-            isScheduled: campaignDef.isScheduled,
-            scheduledAt: campaignDef.scheduledAt,
-            startedAt: campaignDef.startedAt,
-            completedAt: campaignDef.completedAt,
-            batchSize: campaignDef.batchSize,
-            delayInSeconds: campaignDef.delayInSeconds,
-            status: campaignDef.status,
-            totalContacts: audienceMetrics.totalContacts,
-            sentCount: audienceMetrics.sentCount,
-            deliveredCount: audienceMetrics.deliveredCount,
-            readCount: audienceMetrics.readCount,
-            failedCount: audienceMetrics.failedCount,
-            createdByUserId: ownerId,
-            isDeleted: false,
-          },
-        });
+        data: {
+          accountId,
+          name: campaignDef.name,
+          description: campaignDef.description,
+          templateId: campaignDef.templateId,
+          isScheduled: campaignDef.isScheduled,
+          scheduledAt: campaignDef.scheduledAt,
+          startedAt: campaignDef.startedAt,
+          completedAt: campaignDef.completedAt,
+          batchSize: campaignDef.batchSize,
+          delayInSeconds: campaignDef.delayInSeconds,
+          status: campaignDef.status,
+          totalContacts: audienceMetrics.totalContacts,
+          sentCount: audienceMetrics.sentCount,
+          deliveredCount: audienceMetrics.deliveredCount,
+          readCount: audienceMetrics.readCount,
+          failedCount: audienceMetrics.failedCount,
+          createdByUserId: ownerId,
+          isDeleted: false,
+        },
+      });
 
     await prisma.campaignAudience.deleteMany({
       where: {
@@ -1168,12 +1239,12 @@ async function seedCampaigns(
           const status = audienceStatuses[index] || "PENDING";
           const baseTime =
             campaignDef.startedAt || campaignDef.scheduledAt || new Date();
-          const sentAt = ["SENT", "DELIVERED", "READ", "FAILED"].includes(
+          const sentAt = (["SENT", "DELIVERED", "READ", "FAILED"] as ContactStatus[]).includes(
             status,
           )
             ? new Date(baseTime.getTime() + index * 60000)
             : null;
-          const deliveredAt = ["DELIVERED", "READ"].includes(status)
+          const deliveredAt = (["DELIVERED", "READ"] as ContactStatus[]).includes(status)
             ? new Date(baseTime.getTime() + index * 60000 + 30000)
             : null;
           const readAt =
