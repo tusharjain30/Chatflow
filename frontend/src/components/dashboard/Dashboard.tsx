@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowLeftRight,
   MessageSquare,
   Send,
   CheckCheck,
+  ShieldAlert,
   Users,
   UserPlus,
   Megaphone,
@@ -15,6 +17,8 @@ import { QuickActionCard } from "./QuickActionCard";
 import { BroadcastItem } from "./BroadcastItem";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -60,6 +64,11 @@ type DashboardStats = {
 };
 
 export function Dashboard() {
+  const {
+    isImpersonatingCustomer,
+    restoreSupportSession,
+    supportSession,
+  } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -108,6 +117,36 @@ export function Dashboard() {
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header />
+
+        {isImpersonatingCustomer ? (
+          <div className="border-b border-red-200 bg-red-50 px-6 py-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-3">
+                <div className="rounded-full bg-white p-2 text-red-600 shadow-sm">
+                  <ShieldAlert className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-red-900">
+                    Client support session active for {supportSession?.customerCompanyName || "client account"}
+                  </p>
+                  <p className="text-xs text-red-700">
+                    You entered from {supportSession?.originPortal === "admin" ? "super admin" : "reseller"} panel {supportSession?.originLabel || supportSession?.resellerCompanyName || supportSession?.resellerName || "Support"}. Use back to dashboard to return without login.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full border-red-300 bg-white text-red-700 hover:bg-red-100 hover:text-red-800 md:w-auto"
+                onClick={restoreSupportSession}
+              >
+                <ArrowLeftRight className="mr-2 h-4 w-4" />
+                Back to dashboard
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         <main className="flex-1 p-6 overflow-auto">
           <div className="max-w-7xl mx-auto space-y-6">

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { ResellerShell } from "@/components/reseller/ResellerShell";
@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
 const initialForm = {
@@ -64,15 +63,32 @@ export default function ResellerCustomerCreate() {
     }
   };
 
+  const handleBack = () => {
+    navigate("/reseller/customers");
+  };
+
   return (
     <ResellerShell title="Create customer workspace" eyebrow="New Onboarding">
       <Card className="w-full bg-white border shadow-sm">
         {/* HEADER */}
-        <CardHeader className="border-b bg-gray-50 rounded-t-2xl">
-          <CardTitle className="flex items-center gap-2 text-gray-900">
-            <Plus className="h-5 w-5 text-[#16A249]" />
-            Add a new managed customer
-          </CardTitle>
+        <CardHeader className="border-b bg-gray-50 rounded-t-2xl flex flex-row items-center justify-between">
+          {/* LEFT SIDE */}
+          <div className="flex items-center gap-3">
+            {/* BACK BUTTON */}
+            <button
+              onClick={handleBack}
+              className="h-9 w-9 flex items-center justify-center rounded-lg border bg-white 
+                 hover:bg-gray-100 transition"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-600" />
+            </button>
+
+            {/* TITLE */}
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Plus className="h-5 w-5 text-[#16A249]" />
+              Add a new managed customer
+            </CardTitle>
+          </div>
         </CardHeader>
 
         <CardContent className="pt-6">

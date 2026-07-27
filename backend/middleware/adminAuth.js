@@ -25,7 +25,7 @@ const adminAuth = async (req, res, next) => {
         } catch (error) {
             return res.status(RESPONSE_CODES.UNAUTHORIZED).json({
                 status: 0,
-                message: err.name === "TokenExpiredError"
+                message: error.name === "TokenExpiredError"
                     ? "Session expired. Please login again."
                     : "Invalid token",
                 statusCode: RESPONSE_CODES.UNAUTHORIZED,

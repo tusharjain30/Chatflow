@@ -34,7 +34,15 @@ router.get("/", async (req, res) => {
             phone: true,
             isActive: true,
             createdAt: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+                roleType: true,
+              },
+            },
           },
+          orderBy: [{ createdAt: "asc" }],
         },
         subscriptions: {
           where: { isActive: true },

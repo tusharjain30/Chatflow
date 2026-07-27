@@ -1,30 +1,41 @@
 import type { ReactNode } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
+  ArrowLeftRight,
   ChartNoAxesCombined,
   Building2,
+  Megaphone,
+  ClipboardList,
+  ContactRound,
   CreditCard,
   FileText,
   LayoutDashboard,
-  LogOut,
-  TrendingUp,
+  Layers3,
   PlusCircle,
   Settings,
+  Users,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
+import { FiLogOut } from "react-icons/fi";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { FiLogOut } from "react-icons/fi";
 
 const items = [
   { to: "/reseller", label: "Overview", icon: LayoutDashboard },
-  { to: "/reseller/customers/new", label: "Add Customer", icon: PlusCircle },
+  // { to: "/reseller/customers/new", label: "Add Customer", icon: PlusCircle },
   { to: "/reseller/customers", label: "Customers", icon: Building2 },
+  { to: "/reseller/campaigns", label: "Campaigns", icon: Megaphone },
+  { to: "/reseller/templates", label: "Templates", icon: FileText },
+  { to: "/reseller/contacts", label: "Contacts", icon: ContactRound },
+  { to: "/reseller/contact-groups", label: "Contact Groups", icon: Layers3 },
   { to: "/reseller/plans", label: "Plans", icon: CreditCard },
   { to: "/reseller/earnings", label: "Earnings", icon: TrendingUp },
   { to: "/reseller/billing", label: "Billing / Transactions", icon: FileText },
+  { to: "/reseller/team/list", label: "Team", icon: Users },
+  { to: "/reseller/audit", label: "Audit Logs", icon: ClipboardList },
   { to: "/reseller/settings", label: "Settings", icon: Settings },
 ];
 
@@ -37,29 +48,30 @@ export function ResellerShell({
   eyebrow?: string;
   children: ReactNode;
 }) {
-  const { user, logout } = useAuth();
+  const { user, logout, isSupportSessionActive, restoreSupportSession, supportSession } = useAuth();
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       <div className="flex min-h-screen">
-        {/* SIDEBAR */}
-        <aside className="hidden lg:flex lg:flex-col fixed left-0 top-0 h-screen w-72 border-r bg-white px-5 py-6 shadow-sm">
+        <aside className="fixed left-0 top-0 hidden h-screen w-72 flex-col border-r bg-white px-4 py-4 shadow-sm lg:flex overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
           {/* LOGO */}
-          <Link to="/reseller" className="mb-10 flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#16A249] text-white shadow">
-              <ChartNoAxesCombined className="h-6 w-6" />
+          <Link to="/reseller" className="mb-6 flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#16A249] text-white shadow">
+              <ChartNoAxesCombined className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-base font-semibold text-gray-900">
                 Reseller Hub
               </p>
-              <p className="text-xs text-gray-500">Partner control center</p>
+              <p className="text-[10px] text-gray-500">
+                Partner control center
+              </p>
             </div>
           </Link>
 
           {/* NAV */}
-          <nav className="space-y-2">
+          <nav className="space-y-3">
             {items.map((item) => (
               <NavLink
                 key={item.to}
@@ -67,7 +79,7 @@ export function ResellerShell({
                 end={item.to === "/reseller"}
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all",
+                    "flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all",
                     isActive
                       ? "bg-[#16A249] text-white shadow-sm"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
@@ -75,101 +87,139 @@ export function ResellerShell({
                 }
               >
                 <item.icon className="h-5 w-5" />
-                {item.label}
+                <span className="text-[13px]">{item.label}</span>
               </NavLink>
             ))}
           </nav>
 
-          {/* WALLET CARD */}
-          <div className="mt-auto sticky bottom-4">
-            <div className="rounded-2xl border bg-gray-50 p-4 shadow-sm">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-600 text-white">
-                  <Wallet className="h-5 w-5" />
+          {/* FOOTER CARD */}
+          <div className="mt-auto pt-4">
+            <div className="rounded-xl border bg-gray-50 p-3 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-600 text-white">
+                  <Wallet className="h-4 w-4" />
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500">Wallet balance</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    ₹ {(user?.balance ?? 0).toLocaleString()}
+                  <p className="text-[10px] text-gray-500">Wallet balance</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    INR {(user?.balance ?? 0).toLocaleString("en-IN")}
                   </p>
                 </div>
               </div>
 
               <Button
                 variant="outline"
-                className="w-full flex items-center justify-center gap-2 border-red-300 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl"
+                className="w-full justify-center gap-2 rounded-lg border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 text-xs py-2"
                 onClick={() => {
                   logout();
                   navigate("/reseller/login");
                 }}
               >
-                <FiLogOut className="h-4 w-4" />
+                <FiLogOut className="h-3.5 w-3.5" />
                 Logout
               </Button>
             </div>
           </div>
         </aside>
 
-        {/* MAIN */}
-        <main className="flex-1 lg:ml-72">
+        <main className="flex-1 lg:ml-72 bg-gray-50 min-h-screen">
           <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-            {/* HEADER */}
-            <div className="mb-8 rounded-2xl border bg-white p-6 shadow-sm">
-              {eyebrow && (
-                <p className="mb-2 text-xs uppercase tracking-widest text-[#16A249] font-semibold">
-                  {eyebrow}
+            {isSupportSessionActive ? (
+              <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">
+                      Support session active for reseller workspace
+                    </p>
+                    <p className="text-xs text-amber-800">
+                      You entered from {supportSession?.originPortal === "admin" ? "super admin" : "support"} panel {supportSession?.originLabel || supportSession?.adminName || "Support"}. Use back to dashboard to return safely.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full border-amber-300 bg-white text-amber-800 hover:bg-amber-100 md:w-auto"
+                    onClick={restoreSupportSession}
+                  >
+                    <ArrowLeftRight className="mr-2 h-4 w-4" />
+                    Back to dashboard
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+            {/* TOP BAR */}
+            <div className="flex items-center justify-between mb-6">
+              {/* LEFT: Breadcrumb + Title */}
+              <div className="space-y-1">
+                {eyebrow && (
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#16A249]">
+                    {eyebrow}
+                  </p>
+                )}
+
+                <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+                  {title}
+                </h1>
+
+                <p className="text-[13px] text-gray-500 max-w-xl">
+                  Manage your customer portfolio, monitor subscription
+                  performance, and keep partner operations moving efficiently.
                 </p>
-              )}
+              </div>
 
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-                {/* LEFT */}
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
-                    {title}
-                  </h1>
+              {/* RIGHT: USER */}
+              <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-2 transition-all duration-200 hover:border-[#16A249] hover:bg-gray-50 cursor-pointer">
+                {/* Avatar */}
+                <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#16A249]/15 to-[#16A249]/5 text-[#16A249] font-semibold text-sm">
+                  {user?.firstName?.[0]}
+                  {user?.lastName?.[0]}
 
-                  <p className="mt-2 max-w-xl text-xs text-gray-500">
-                    Manage your customer portfolio, monitor subscription
-                    performance, and keep partner operations moving from one
-                    place.
+                  {/* Status dot */}
+                  <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
+                </div>
+
+                {/* Info */}
+                <div className="flex flex-col leading-tight">
+                  <p className="text-sm font-semibold text-gray-800 group-hover:text-[#16A249] transition">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+
+                  <p className="text-[11px] text-gray-500 truncate max-w-[150px]">
+                    {user?.companyName || user?.email}
                   </p>
                 </div>
 
-                {/* USER CARD */}
-                <div className="group w-full md:w-auto flex items-center gap-4 rounded-2xl bg-white px-5 py-4 border border-gray-100 hover:border-gray-200 transition-all duration-300 ease-in-out cursor-pointer">
-                  {/* AVATAR - Added a subtle ring and gradient feel */}
-                  <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-green-50 to-green-100 text-[#16A249] font-bold text-sm border border-green-200/50 shadow-inner">
-                    {user?.firstName?.[0]}
-                    {user?.lastName?.[0]}
-                    {/* Active indicator repositioned on avatar for a modern look */}
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
-                  </div>
+                {/* Divider */}
+                <div className="h-6 w-px bg-gray-200 mx-1" />
 
-                  {/* USER INFO */}
-                  <div className="flex flex-col min-w-0">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">
-                      Signed in as
-                    </p>
-
-                    <p className="font-bold text-gray-800 text-sm leading-tight group-hover:text-green-700 transition-colors">
-                      {user?.firstName} {user?.lastName}
-                    </p>
-
-                    <p className="text-xs text-gray-500 truncate max-w-[150px] font-medium mt-0.5">
-                      {user?.companyName || user?.email}
-                    </p>
-                  </div>
-
-                  {/* STATUS BADGE - Cleaner pill-style design */}
-                  <div className="ml-auto hidden sm:flex items-center px-2 py-1 rounded-full bg-green-50 border border-green-100">
-                    <span className="text-[10px] font-bold text-green-700">
-                      ONLINE
-                    </span>
-                  </div>
+                {/* Status Label */}
+                <div className="hidden sm:flex items-center gap-1 text-[11px] font-medium text-green-600">
+                  <span className="h-2 w-2 rounded-full bg-green-500" />
+                  Online
                 </div>
+
+                {/* Arrow (interaction hint) */}
+                <svg
+                  className="ml-1 h-4 w-4 text-gray-400 group-hover:text-[#16A249] transition"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9 5l7 7-7 7"
+                  />
+                </svg>
               </div>
             </div>
 
+            {/* DIVIDER */}
+            <div className="border-t border-gray-200 mb-6" />
+
+            {/* PAGE CONTENT */}
             {children}
           </div>
         </main>

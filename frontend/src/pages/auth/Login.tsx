@@ -209,6 +209,15 @@ export default function Login() {
                 Open reseller panel
               </Link>
             </p>
+            <p className="mt-2 text-center text-sm text-muted-foreground">
+              Managing the whole platform?{" "}
+              <Link
+                to="/admin/login"
+                className="text-primary hover:underline font-medium"
+              >
+                Open super admin panel
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

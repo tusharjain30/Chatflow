@@ -32,7 +32,15 @@ const requireAuth = async (req, res, next) => {
       });
     }
 
-    const { userId, adminId, resellerId, tokenVersion, userType } = decoded;
+    const {
+      userId,
+      adminId,
+      resellerId,
+      resellerMemberId,
+      tokenVersion,
+      userType,
+      impersonatedBy,
+    } = decoded;
 
     let authUser = null;
 
@@ -87,10 +95,69 @@ const requireAuth = async (req, res, next) => {
         email: authUser.email,
         phone: authUser.phone,
         wabaVerification: authUser.wabaVerification,
+        impersonatedBy: impersonatedBy || null,
       };
 
       return next();
     } else if (userType === "RESELLER") {
+      if (resellerMemberId) {
+        authUser = await prisma.resellerMember.findUnique({
+          where: { id: resellerMemberId },
+          include: {
+            reseller: true,
+          },
+        });
+
+        if (!authUser) {
+          return res.status(RESPONSE_CODES.UNAUTHORIZED).json({
+            status: 0,
+            message: "Reseller member not found",
+            statusCode: RESPONSE_CODES.UNAUTHORIZED,
+            data: {},
+          });
+        }
+
+        if (
+          authUser.isDeleted ||
+          !authUser.isActive ||
+          !authUser.reseller ||
+          authUser.reseller.isDeleted ||
+          !authUser.reseller.isActive
+        ) {
+          return res.status(RESPONSE_CODES.UNAUTHORIZED).json({
+            status: 0,
+            message: "Reseller member account inactive or deleted",
+            statusCode: RESPONSE_CODES.UNAUTHORIZED,
+            data: {},
+          });
+        }
+
+        if (tokenVersion !== authUser.tokenVersion) {
+          return res.status(RESPONSE_CODES.UNAUTHORIZED).json({
+            status: 0,
+            message: "Session expired. Please login again.",
+            statusCode: RESPONSE_CODES.UNAUTHORIZED,
+            data: {},
+          });
+        }
+
+        req.auth = {
+          userType: "RESELLER",
+          resellerId: authUser.resellerId,
+          resellerMemberId: authUser.id,
+          resellerMemberRole: authUser.roleType,
+          firstName: authUser.firstName,
+          lastName: authUser.lastName,
+          email: authUser.email,
+          phone: authUser.phone,
+          companyName: authUser.reseller.companyName,
+          commissionRate: authUser.reseller.commissionRate,
+          balance: authUser.reseller.balance,
+        };
+
+        return next();
+      }
+
       authUser = await prisma.reseller.findUnique({
         where: { id: resellerId },
       });
@@ -125,6 +192,8 @@ const requireAuth = async (req, res, next) => {
       req.auth = {
         userType: "RESELLER",
         resellerId: authUser.id,
+        resellerMemberId: null,
+        resellerMemberRole: "RESELLER_OWNER",
         firstName: authUser.firstName,
         lastName: authUser.lastName,
         email: authUser.email,

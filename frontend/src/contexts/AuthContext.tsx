@@ -35,6 +35,29 @@ export type User = {
   companyName?: string;
   commissionRate?: number;
   balance?: number;
+  impersonatedBy?: {
+    adminId?: string;
+    adminName?: string;
+    adminEmail?: string;
+    resellerId?: string;
+    resellerName?: string;
+    resellerCompanyName?: string;
+  } | null;
+};
+
+type Portal = "user" | "reseller" | "admin";
+
+type SupportSession = {
+  originToken: string;
+  originPortal: Portal;
+  originLabel?: string;
+  adminName?: string;
+  adminEmail?: string;
+  resellerCompanyName?: string;
+  resellerName?: string;
+  customerCompanyName?: string;
+  resellerToken?: string;
+  resellerPortal?: "reseller";
 };
 
 /* ================= CONTEXT TYPE ================= */
@@ -45,7 +68,12 @@ type AuthContextType = {
   isAuthenticated: boolean;
   isAdmin: boolean;
   isReseller: boolean;
+  isImpersonatingCustomer: boolean;
+  isSupportSessionActive: boolean;
+  supportSession: SupportSession | null;
   logout: () => void;
+  restoreSupportSession: () => Promise<void>;
+  restoreResellerSession: () => Promise<void>;
   refetchProfile: () => Promise<void>;
 };
 
@@ -53,11 +81,27 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const SUPPORT_SESSION_KEY = "support_session";
+
 /* ================= PROVIDER ================= */
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [supportSession, setSupportSession] = useState<SupportSession | null>(
+    () => {
+      const raw = localStorage.getItem(SUPPORT_SESSION_KEY);
+      if (!raw) return null;
+
+      try {
+        return JSON.parse(raw) as SupportSession;
+      } catch (error) {
+        console.error("Invalid support session:", error);
+        localStorage.removeItem(SUPPORT_SESSION_KEY);
+        return null;
+      }
+    },
+  );
 
   /* ========== FETCH PROFILE ========== */
   const fetchProfile = useCallback(async () => {
@@ -74,6 +118,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const profileUrl =
         portal === "reseller"
           ? `${API_BASE}/reseller/profile/me`
+          : portal === "admin"
+            ? `${API_BASE}/super-admin/profile/get`
           : `${API_BASE}/user/profile/me`;
 
       const res = await fetch(profileUrl, {
@@ -107,8 +153,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
     localStorage.removeItem("auth_portal");
+    localStorage.removeItem(SUPPORT_SESSION_KEY);
+    setSupportSession(null);
     setUser(null);
   }, []);
+
+  const restoreSupportSession = useCallback(async () => {
+    const originToken = supportSession?.originToken || supportSession?.resellerToken;
+    const originPortal = supportSession?.originPortal || supportSession?.resellerPortal;
+
+    if (!originToken || !originPortal) {
+      logout();
+      return;
+    }
+
+    localStorage.setItem("auth_token", originToken);
+    localStorage.setItem("auth_portal", originPortal);
+    localStorage.removeItem(SUPPORT_SESSION_KEY);
+    setSupportSession(null);
+    setUser(null);
+    setLoading(false);
+    window.location.assign(
+      originPortal === "admin" ? "/admin" : originPortal === "reseller" ? "/reseller" : "/",
+    );
+  }, [logout, supportSession]);
+
+  const restoreResellerSession = useCallback(async () => {
+    await restoreSupportSession();
+  }, [restoreSupportSession]);
 
   return (
     <AuthContext.Provider
@@ -118,7 +190,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         isAdmin: user?.userType === "ADMIN",
         isReseller: user?.userType === "RESELLER",
+        isImpersonatingCustomer:
+          (localStorage.getItem("auth_portal") || "user") === "user" &&
+          !!supportSession,
+        isSupportSessionActive: !!supportSession,
+        supportSession,
         logout,
+        restoreSupportSession,
+        restoreResellerSession,
         refetchProfile: fetchProfile,
       }}
     >

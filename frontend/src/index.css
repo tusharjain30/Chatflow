@@ -200,3 +200,7 @@
   background: #cbd5e1;
   border-radius: 10px;
 }
+
+.swal2-actions {
+  gap: 14px !important;
+}

@@ -1,9 +1,19 @@
-import { useState } from 'react';
-import { AdminLayout } from '@/components/layouts/AdminLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Modal } from '@/components/shared/Modal';
+import { useEffect, useMemo, useState } from "react";
+import {
+  Building2,
+  KeyRound,
+  Power,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+
+import { AdminLayout } from "@/components/layouts/AdminLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -11,364 +21,640 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Ban,
-  CheckCircle,
-  Mail,
-  Download,
-  Filter,
-} from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface User {
-  id: number;
-  name: string;
+const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
+
+type ResellerItem = {
+  id: string;
+  companyName: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  role: 'admin' | 'user' | 'moderator';
-  status: 'active' | 'suspended' | 'pending';
-  plan: string;
-  createdAt: string;
-  lastActive: string;
-}
-
-const initialUsers: User[] = [
-  { id: 1, name: 'John Doe', email: 'john@example.com', role: 'admin', status: 'active', plan: 'Enterprise', createdAt: '2024-01-15', lastActive: '2 hours ago' },
-  { id: 2, name: 'Jane Smith', email: 'jane@company.com', role: 'user', status: 'active', plan: 'Professional', createdAt: '2024-02-20', lastActive: '1 day ago' },
-  { id: 3, name: 'Mike Johnson', email: 'mike@startup.io', role: 'user', status: 'suspended', plan: 'Starter', createdAt: '2024-03-10', lastActive: '1 week ago' },
-  { id: 4, name: 'Sarah Williams', email: 'sarah@business.com', role: 'moderator', status: 'active', plan: 'Professional', createdAt: '2024-03-15', lastActive: '3 hours ago' },
-  { id: 5, name: 'Tom Brown', email: 'tom@agency.co', role: 'user', status: 'pending', plan: 'Starter', createdAt: '2024-04-01', lastActive: 'Never' },
-];
-
-const roleStyles = {
-  admin: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-  user: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-  moderator: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
+  phone: string;
+  commissionRate: number;
+  isActive: boolean;
+  stats: {
+    totalCustomers: number;
+    activeCustomers: number;
+    suspendedCustomers: number;
+    monthlyRevenue: number;
+  };
 };
 
-const statusStyles = {
-  active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-  suspended: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+type CustomerItem = {
+  id: string;
+  companyName: string;
+  isActive: boolean;
+  creditBalance: number;
+  reseller: {
+    id: string;
+    companyName: string;
+  } | null;
+  owner: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    isActive: boolean;
+    isVerified: boolean;
+  } | null;
+  subscription: {
+    id: string;
+    startDate: string;
+    plan: {
+      id: string;
+      name: string;
+      maxTemplates: number;
+      maxBots: number | null;
+      monthlyMessageLimit: number | null;
+    } | null;
+  } | null;
 };
 
 export default function UserManagement() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [newUser, setNewUser] = useState<{ name: string; email: string; role: 'admin' | 'user' | 'moderator'; plan: string }>({ name: '', email: '', role: 'user', plan: 'Starter' });
   const { toast } = useToast();
+  const { user } = useAuth();
+  const adminToken = localStorage.getItem("auth_token");
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const [resellers, setResellers] = useState<ResellerItem[]>([]);
+  const [customers, setCustomers] = useState<CustomerItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [customerStatus, setCustomerStatus] = useState("all");
+  const [customerResellerId, setCustomerResellerId] = useState("all");
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const fetchResellers = async () => {
+    const response = await fetch(
+      `${API_BASE}/super-admin/resellers/list?page=1&limit=20`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      },
+    );
+    const json = await response.json();
+
+    if (!response.ok || json.status !== 1) {
+      throw new Error(json.message || "Unable to load resellers");
+    }
+
+    setResellers(json.data.items || []);
+  };
+
+  const fetchCustomers = async (
+    search = customerSearch,
+    status = customerStatus,
+    resellerId = customerResellerId,
+  ) => {
+    const params = new URLSearchParams();
+    params.set("page", "1");
+    params.set("limit", "30");
+    if (search.trim()) params.set("search", search.trim());
+    if (status !== "all") params.set("status", status);
+    if (resellerId !== "all") params.set("resellerId", resellerId);
+
+    const response = await fetch(
+      `${API_BASE}/super-admin/tools/customers?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+      },
+    );
+    const json = await response.json();
+
+    if (!response.ok || json.status !== 1) {
+      throw new Error(json.message || "Unable to load customers");
+    }
+
+    setCustomers(json.data.items || []);
+  };
+
+  const refreshPage = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([fetchResellers(), fetchCustomers()]);
+    } catch (error) {
+      toast({
+        title: "Unable to load admin tools",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshPage();
+  }, []);
+
+  const supportStats = useMemo(
+    () => ({
+      totalResellers: resellers.length,
+      inactiveResellers: resellers.filter((item) => !item.isActive).length,
+      totalCustomers: customers.length,
+      inactiveCustomers: customers.filter((item) => !item.isActive).length,
+    }),
+    [customers, resellers],
   );
 
-  const handleAddUser = () => {
-    const user: User = {
-      id: Date.now(),
-      ...newUser,
-      status: 'pending',
-      createdAt: new Date().toISOString().split('T')[0],
-      lastActive: 'Never',
-    };
-    setUsers([...users, user]);
-    setIsAddModalOpen(false);
-    setNewUser({ name: '', email: '', role: 'user', plan: 'Starter' });
-    toast({ title: 'User created', description: `${user.name} has been added successfully.` });
+  const saveSupportSession = (
+    originLabel?: string,
+    extras?: Record<string, string | undefined>,
+  ) => {
+    if (!adminToken) {
+      throw new Error("Admin session is not available");
+    }
+
+    localStorage.setItem(
+      "support_session",
+      JSON.stringify({
+        originToken: adminToken,
+        originPortal: "admin",
+        originLabel: originLabel || user?.email || "Super Admin",
+        adminName: `${user?.firstName || ""} ${user?.lastName || ""}`.trim(),
+        adminEmail: user?.email,
+        ...extras,
+      }),
+    );
   };
 
-  const handleEditUser = () => {
-    if (!selectedUser) return;
-    setUsers(users.map((u) => (u.id === selectedUser.id ? selectedUser : u)));
-    setIsEditModalOpen(false);
-    toast({ title: 'User updated', description: `${selectedUser.name}'s details have been updated.` });
+  const loginAsReseller = async (reseller: ResellerItem) => {
+    try {
+      setBusyKey(`reseller-login-${reseller.id}`);
+      const response = await fetch(
+        `${API_BASE}/super-admin/tools/login-as-reseller`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            resellerId: reseller.id,
+          }),
+        },
+      );
+      const json = await response.json();
+
+      if (!response.ok || json.status !== 1) {
+        throw new Error(json.message || "Unable to login as reseller");
+      }
+
+      saveSupportSession(user?.email || "Super Admin", {
+        resellerCompanyName: json.data.supportSession?.resellerCompanyName,
+      });
+      localStorage.setItem("auth_token", json.data.token);
+      localStorage.setItem("auth_portal", json.data.portal || "reseller");
+      window.location.assign(json.data.redirectTo || "/reseller");
+    } catch (error) {
+      toast({
+        title: "Login as reseller failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+      setBusyKey(null);
+    }
   };
 
-  const handleDeleteUser = () => {
-    if (!selectedUser) return;
-    setUsers(users.filter((u) => u.id !== selectedUser.id));
-    setIsDeleteModalOpen(false);
-    toast({ title: 'User deleted', description: `${selectedUser.name} has been removed.`, variant: 'destructive' });
+  const loginAsCustomer = async (customer: CustomerItem) => {
+    try {
+      setBusyKey(`customer-login-${customer.id}`);
+      const response = await fetch(
+        `${API_BASE}/super-admin/tools/login-as-customer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            accountId: customer.id,
+          }),
+        },
+      );
+      const json = await response.json();
+
+      if (!response.ok || json.status !== 1) {
+        throw new Error(json.message || "Unable to login as customer");
+      }
+
+      saveSupportSession(user?.email || "Super Admin", {
+        customerCompanyName: json.data.supportSession?.customerCompanyName,
+      });
+      localStorage.setItem("auth_token", json.data.token);
+      localStorage.setItem("auth_portal", json.data.portal || "user");
+      window.location.assign(json.data.redirectTo || "/");
+    } catch (error) {
+      toast({
+        title: "Login as customer failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+      setBusyKey(null);
+    }
   };
 
-  const handleToggleStatus = (user: User) => {
-    const newStatus = user.status === 'active' ? 'suspended' : 'active';
-    setUsers(users.map((u) => (u.id === user.id ? { ...u, status: newStatus } : u)));
-    toast({
-      title: newStatus === 'active' ? 'User activated' : 'User suspended',
-      description: `${user.name} has been ${newStatus}.`,
-    });
+  const forceActivate = async (
+    entityType: "RESELLER" | "CUSTOMER_ACCOUNT",
+    id: string,
+  ) => {
+    try {
+      setBusyKey(`activate-${entityType}-${id}`);
+      const response = await fetch(
+        `${API_BASE}/super-admin/tools/force-activate`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            entityType,
+            id,
+          }),
+        },
+      );
+      const json = await response.json();
+
+      if (!response.ok || json.status !== 1) {
+        throw new Error(json.message || "Unable to force activate");
+      }
+
+      toast({
+        title: "Account activated",
+        description:
+          entityType === "RESELLER"
+            ? "Reseller account was force activated."
+            : "Customer account was force activated.",
+      });
+
+      await refreshPage();
+    } catch (error) {
+      toast({
+        title: "Force activate failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyKey(null);
+    }
   };
 
-  const handleSendEmail = (user: User) => {
-    toast({ title: 'Email sent', description: `A notification has been sent to ${user.email}.` });
+  const resetLimits = async (customer: CustomerItem) => {
+    try {
+      setBusyKey(`reset-${customer.id}`);
+      const response = await fetch(
+        `${API_BASE}/super-admin/tools/reset-limits`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            accountId: customer.id,
+          }),
+        },
+      );
+      const json = await response.json();
+
+      if (!response.ok || json.status !== 1) {
+        throw new Error(json.message || "Unable to reset limits");
+      }
+
+      toast({
+        title: "Limits reset",
+        description: `${json.data.resetTokens || 0} service token limits were reset for ${customer.companyName}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Reset limits failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setBusyKey(null);
+    }
   };
 
   return (
     <AdminLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground">Manage all platform users and their permissions</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-rose-500">
+              Hidden Power
+            </p>
+            <h1 className="mt-2 text-3xl font-bold text-foreground">
+              Admin Tools
+            </h1>
+            <p className="text-muted-foreground">
+              Support-king controls for instant impersonation, recovery, and
+              limit resets.
+            </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => toast({ title: 'Exported', description: 'User data exported successfully.' })}>
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-            <Button onClick={() => setIsAddModalOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add User
-            </Button>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-          <div className="bg-card p-4 rounded-lg border">
-            <p className="text-sm text-muted-foreground">Total Users</p>
-            <p className="text-2xl font-bold">{users.length}</p>
-          </div>
-          <div className="bg-card p-4 rounded-lg border">
-            <p className="text-sm text-muted-foreground">Active</p>
-            <p className="text-2xl font-bold text-green-600">{users.filter((u) => u.status === 'active').length}</p>
-          </div>
-          <div className="bg-card p-4 rounded-lg border">
-            <p className="text-sm text-muted-foreground">Suspended</p>
-            <p className="text-2xl font-bold text-red-600">{users.filter((u) => u.status === 'suspended').length}</p>
-          </div>
-          <div className="bg-card p-4 rounded-lg border">
-            <p className="text-sm text-muted-foreground">Pending</p>
-            <p className="text-2xl font-bold text-yellow-600">{users.filter((u) => u.status === 'pending').length}</p>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search users..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Button variant="outline">
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
+          <Button variant="outline" onClick={refreshPage}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh
           </Button>
         </div>
 
-        {/* Table */}
-        <div className="bg-card rounded-lg border overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Plan</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last Active</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={roleStyles[user.role]}>{user.role}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={statusStyles[user.status]}>{user.status}</Badge>
-                  </TableCell>
-                  <TableCell>{user.plan}</TableCell>
-                  <TableCell>{user.createdAt}</TableCell>
-                  <TableCell>{user.lastActive}</TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => { setSelectedUser(user); setIsEditModalOpen(true); }}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSendEmail(user)}>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
-                          {user.status === 'active' ? (
-                            <>
-                              <Ban className="h-4 w-4 mr-2" />
-                              Suspend
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-4 w-4 mr-2" />
-                              Activate
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => { setSelectedUser(user); setIsDeleteModalOpen(true); }}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Resellers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {supportStats.totalResellers}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Power className="h-4 w-4" />
+                Inactive Resellers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {supportStats.inactiveResellers}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Customers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {supportStats.totalCustomers}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4" />
+                Inactive Customers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {supportStats.inactiveCustomers}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Add User Modal */}
-        <Modal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} title="Add New User">
-          <div className="space-y-4">
-            <div>
-              <Label>Name</Label>
-              <Input
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                placeholder="Enter name"
-              />
-            </div>
-            <div>
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                placeholder="Enter email"
-              />
-            </div>
-            <div>
-              <Label>Role</Label>
-              <Select value={newUser.role} onValueChange={(v) => setNewUser({ ...newUser, role: v as 'admin' | 'user' | 'moderator' })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="moderator">Moderator</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Plan</Label>
-              <Select value={newUser.plan} onValueChange={(v) => setNewUser({ ...newUser, plan: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Starter">Starter</SelectItem>
-                  <SelectItem value="Professional">Professional</SelectItem>
-                  <SelectItem value="Enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setIsAddModalOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddUser} disabled={!newUser.name || !newUser.email}>Add User</Button>
-            </div>
-          </div>
-        </Modal>
+        <Card>
+          <CardHeader>
+            <CardTitle>Login As Reseller</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Reseller</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Commission</TableHead>
+                  <TableHead>Customers</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {resellers.map((reseller) => (
+                  <TableRow key={reseller.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{reseller.companyName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {reseller.firstName} {reseller.lastName} •{" "}
+                          {reseller.email}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          reseller.isActive
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }
+                      >
+                        {reseller.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{reseller.commissionRate}%</TableCell>
+                    <TableCell>{reseller.stats.totalCustomers}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loginAsReseller(reseller)}
+                          disabled={busyKey === `reseller-login-${reseller.id}`}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" />
+                          Login As
+                        </Button>
+                        {!reseller.isActive ? (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              forceActivate("RESELLER", reseller.id)
+                            }
+                            disabled={
+                              busyKey === `activate-RESELLER-${reseller.id}`
+                            }
+                          >
+                            <Power className="mr-2 h-4 w-4" />
+                            Force Activate
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-        {/* Edit User Modal */}
-        <Modal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} title="Edit User">
-          {selectedUser && (
-            <div className="space-y-4">
-              <div>
-                <Label>Name</Label>
+        <Card>
+          <CardHeader>
+            <CardTitle>Login As Customer</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-col xl:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  value={selectedUser.name}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, name: e.target.value })}
+                  value={customerSearch}
+                  onChange={(event) => setCustomerSearch(event.target.value)}
+                  placeholder="Search customer, owner, email, phone..."
+                  className="pl-10"
                 />
               </div>
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={selectedUser.email}
-                  onChange={(e) => setSelectedUser({ ...selectedUser, email: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Role</Label>
-                <Select
-                  value={selectedUser.role}
-                  onValueChange={(v: 'admin' | 'user' | 'moderator') => setSelectedUser({ ...selectedUser, role: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="moderator">Moderator</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancel</Button>
-                <Button onClick={handleEditUser}>Save Changes</Button>
-              </div>
+              <Select value={customerStatus} onValueChange={setCustomerStatus}>
+                <SelectTrigger className="w-full xl:w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={customerResellerId}
+                onValueChange={setCustomerResellerId}
+              >
+                <SelectTrigger className="w-full xl:w-[220px]">
+                  <SelectValue placeholder="Reseller" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Resellers</SelectItem>
+                  {resellers.map((reseller) => (
+                    <SelectItem key={reseller.id} value={reseller.id}>
+                      {reseller.companyName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={() =>
+                  fetchCustomers(
+                    customerSearch,
+                    customerStatus,
+                    customerResellerId,
+                  )
+                }
+              >
+                Apply
+              </Button>
             </div>
-          )}
-        </Modal>
 
-        {/* Delete Confirmation Modal */}
-        <Modal open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} title="Delete User">
-          <div className="space-y-4">
-            <p>Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be undone.</p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>Cancel</Button>
-              <Button variant="destructive" onClick={handleDeleteUser}>Delete</Button>
-            </div>
-          </div>
-        </Modal>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Reseller</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow key={customer.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{customer.companyName}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Balance: INR{" "}
+                          {Number(customer.creditBalance || 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {customer.reseller?.companyName || "Direct"}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        className={
+                          customer.isActive
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }
+                      >
+                        {customer.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {customer.subscription?.plan?.name || "No active plan"}
+                    </TableCell>
+                    <TableCell>
+                      {customer.owner ? (
+                        <div>
+                          <p className="font-medium">
+                            {customer.owner.firstName} {customer.owner.lastName}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {customer.owner.email}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          No active owner
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => loginAsCustomer(customer)}
+                          disabled={busyKey === `customer-login-${customer.id}`}
+                        >
+                          <KeyRound className="mr-2 h-4 w-4" />
+                          Login As
+                        </Button>
+                        {!customer.isActive ? (
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              forceActivate("CUSTOMER_ACCOUNT", customer.id)
+                            }
+                            disabled={
+                              busyKey ===
+                              `activate-CUSTOMER_ACCOUNT-${customer.id}`
+                            }
+                          >
+                            <Power className="mr-2 h-4 w-4" />
+                            Force Activate
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => resetLimits(customer)}
+                          disabled={busyKey === `reset-${customer.id}`}
+                        >
+                          <RefreshCcw className="mr-2 h-4 w-4" />
+                          Reset Limits
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       </div>
     </AdminLayout>
   );

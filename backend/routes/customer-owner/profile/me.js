@@ -44,6 +44,7 @@ router.get("/", async (req, res) => {
                 statusCode: RESPONSE_CODES.GET,
                 data: {
                     userType: "USER",
+                    impersonatedBy: req.auth.impersonatedBy || null,
                     ...safeUser,
                 },
             });

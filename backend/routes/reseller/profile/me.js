@@ -17,6 +17,40 @@ router.get("/", async (req, res) => {
       });
     }
 
+    if (req.auth.resellerMemberId) {
+      const member = await prisma.resellerMember.findUnique({
+        where: { id: req.auth.resellerMemberId },
+        include: {
+          reseller: true,
+        },
+      });
+
+      if (!member) {
+        return res.status(RESPONSE_CODES.NOT_FOUND).json({
+          status: 0,
+          message: "Reseller member not found",
+          statusCode: RESPONSE_CODES.NOT_FOUND,
+          data: {},
+        });
+      }
+
+      const { password, tokenVersion, reseller, ...safeMember } = member;
+
+      return res.status(RESPONSE_CODES.GET).json({
+        status: 1,
+        message: "Reseller member profile fetched successfully",
+        statusCode: RESPONSE_CODES.GET,
+        data: {
+          userType: "RESELLER",
+          companyName: reseller.companyName,
+          commissionRate: reseller.commissionRate,
+          balance: reseller.balance,
+          isTeamMember: true,
+          ...safeMember,
+        },
+      });
+    }
+
     const reseller = await prisma.reseller.findUnique({
       where: { id: req.auth.resellerId },
     });

@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Shield,
   ArrowLeft,
+  Building2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,7 +36,7 @@ function NavItem({ icon: Icon, label, to, collapsed }: NavItemProps) {
         isActive
           ? "bg-destructive text-destructive-foreground shadow-md"
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-        collapsed && "justify-center px-2"
+        collapsed && "justify-center px-2",
       )}
     >
       <Icon className="h-5 w-5 flex-shrink-0" />
@@ -48,17 +49,21 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const { isAuthenticated, isAdmin, user } = useAuth();
 
-  // For demo purposes, allow any authenticated user to access admin
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+  if (
+    !isAuthenticated ||
+    !isAdmin ||
+    localStorage.getItem("auth_portal") !== "admin"
+  ) {
+    return <Navigate to="/admin/login" replace />;
   }
 
   const navItems = [
     { icon: LayoutDashboard, label: "Overview", to: "/admin" },
-    { icon: Users, label: "Users", to: "/admin/users" },
+    { icon: Building2, label: "Resellers", to: "/admin/resellers" },
+    { icon: Users, label: "Customers", to: "/admin/users" },
     { icon: CreditCard, label: "Plans & Pricing", to: "/admin/plans" },
     { icon: FileText, label: "Message Logs", to: "/admin/logs" },
-    { icon: CreditCard, label: "Payment History", to: "/admin/payments" },
+    { icon: CreditCard, label: "Invoices", to: "/admin/payments" },
     { icon: Settings, label: "System Settings", to: "/admin/settings" },
   ];
 
@@ -67,19 +72,29 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <aside
         className={cn(
           "bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 transition-all duration-300",
-          collapsed ? "w-[72px]" : "w-64"
+          collapsed ? "w-[72px]" : "w-64",
         )}
       >
         {/* Header */}
         <div className="p-4 flex items-center justify-between">
-          <Link to="/admin" className={cn("flex items-center gap-3", collapsed && "justify-center w-full")}>
+          <Link
+            to="/admin"
+            className={cn(
+              "flex items-center gap-3",
+              collapsed && "justify-center w-full",
+            )}
+          >
             <div className="h-10 w-10 rounded-xl bg-destructive flex items-center justify-center flex-shrink-0">
               <Shield className="h-5 w-5 text-destructive-foreground" />
             </div>
             {!collapsed && (
               <div>
-                <h1 className="font-bold text-lg text-foreground">Admin Panel</h1>
-                <p className="text-xs text-muted-foreground">System Management</p>
+                <h1 className="font-bold text-lg text-foreground">
+                  Super Admin
+                </h1>
+                <p className="text-xs text-muted-foreground">
+                  Platform Control Center
+                </p>
               </div>
             )}
           </Link>
@@ -93,10 +108,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             onClick={() => setCollapsed(!collapsed)}
             className={cn(
               "w-full justify-center text-muted-foreground hover:text-foreground",
-              !collapsed && "justify-end"
+              !collapsed && "justify-end",
             )}
           >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
@@ -119,11 +138,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <Button
             variant="ghost"
             asChild
-            className={cn("w-full justify-start", collapsed && "justify-center")}
+            className={cn(
+              "w-full justify-start",
+              collapsed && "justify-center",
+            )}
           >
             <Link to="/">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              {!collapsed && "Back to Dashboard"}
+              {!collapsed && "Logout"}
             </Link>
           </Button>
         </div>

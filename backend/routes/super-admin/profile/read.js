@@ -18,7 +18,9 @@ router.get("/", async (req, res) => {
             },
             select: {
                 id: true,
-                name: true,
+                firstName: true,
+                lastName: true,
+                userName: true,
                 email: true,
                 phone: true,
                 isActive: true,
@@ -47,7 +49,10 @@ router.get("/", async (req, res) => {
             status: 1,
             message: "Profile fetched successfully",
             statusCode: RESPONSE_CODES.GET,
-            data: profile
+            data: {
+                userType: "ADMIN",
+                ...profile,
+            }
         });
 
     } catch (error) {

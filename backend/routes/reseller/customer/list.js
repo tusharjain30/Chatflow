@@ -6,6 +6,41 @@ const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 const router = express.Router();
 
+const resolveComputedCustomerStatus = (account, latestSubscription) => {
+  const now = new Date();
+  const trialEndsAt = account.trialEndsAt ? new Date(account.trialEndsAt) : null;
+  const subscriptionExpiryDate = latestSubscription
+    ? latestSubscription.endDate ||
+      new Date(
+        new Date(latestSubscription.startDate).getTime() +
+          30 * 24 * 60 * 60 * 1000,
+      )
+    : null;
+  const owner = account.users[0] || null;
+
+  if (account.lifecycleStatus === "SUSPENDED") return "suspended";
+  if (
+    account.lifecycleStatus === "PENDING_VERIFICATION" ||
+    (owner && owner.isVerified === false)
+  ) {
+    return "pending_verification";
+  }
+  if (
+    account.lifecycleStatus === "EXPIRED" ||
+    (trialEndsAt && trialEndsAt < now) ||
+    (subscriptionExpiryDate && new Date(subscriptionExpiryDate) < now)
+  ) {
+    return "expired";
+  }
+  if (account.lifecycleStatus === "TRIAL" && (!trialEndsAt || trialEndsAt >= now)) {
+    return "trial";
+  }
+  if (account.lifecycleStatus === "PAUSED" || account.isActive === false) {
+    return "paused";
+  }
+  return "active";
+};
+
 router.get("/", async (req, res) => {
   try {
     if (req.auth.userType !== "RESELLER") {
@@ -77,6 +112,7 @@ router.get("/", async (req, res) => {
               email: true,
               phone: true,
               isActive: true,
+              isVerified: true,
             },
           },
           subscriptions: {
@@ -278,6 +314,8 @@ router.get("/", async (req, res) => {
           id: account.id,
           companyName: account.companyName,
           isActive: account.isActive,
+          lifecycleStatus: account.lifecycleStatus,
+          trialEndsAt: account.trialEndsAt,
           creditBalance: account.creditBalance,
           createdAt: account.createdAt,
           owner: account.users[0] || null,
@@ -291,11 +329,10 @@ router.get("/", async (req, res) => {
           },
           subscriptionExpiryDate,
           counts: account._count,
-          computedStatus: isExpired
-            ? "expired"
-            : account.isActive
-              ? "active"
-              : "paused",
+          computedStatus: resolveComputedCustomerStatus(
+            account,
+            latestSubscription,
+          ),
         };
       })
       .filter((account) => {

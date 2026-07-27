@@ -134,8 +134,12 @@ model CustomerAccount {
   resellerId  String?
   creditBalance Float @default(0)
 
-  isActive  Boolean @default(true)
-  isDeleted Boolean @default(false)
+  isActive        Boolean @default(true)
+  isDeleted       Boolean @default(false)
+  lifecycleStatus CustomerLifecycleStatus @default(ACTIVE)
+  trialEndsAt     DateTime?
+  statusChangedAt DateTime?
+  statusReason    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -154,6 +158,8 @@ model CustomerAccount {
   webhookEvents      WebhookEvent[]
   campaigns          Campaign[]
   billingTransactions BillingTransaction[]
+
+  @@index([resellerId, lifecycleStatus, isDeleted])
 }
 
 model Reseller {
@@ -177,8 +183,33 @@ model Reseller {
 
   accounts CustomerAccount[] @relation("ResellerAccounts")
   billingTransactions BillingTransaction[]
+  teamMembers         ResellerMember[]
 
   @@index([isActive, isDeleted])
+}
+
+model ResellerMember {
+  id          String            @id @default(uuid())
+  resellerId  String
+  reseller    Reseller          @relation(fields: [resellerId], references: [id])
+  firstName   String
+  lastName    String
+  userName    String?           @unique
+  email       String            @unique
+  phone       String            @unique
+  password    String
+  roleType    ResellerMemberRole @default(RESELLER_SUPPORT)
+  permissions Json?
+  tokenVersion String           @default(uuid())
+
+  isActive   Boolean @default(true)
+  isDeleted  Boolean @default(false)
+  isVerified Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([resellerId, isActive, isDeleted])
 }
 
 model BillingTransaction {
@@ -919,12 +950,26 @@ enum VerificationStatus {
   EXPIRED
 }
 
+enum CustomerLifecycleStatus {
+  ACTIVE
+  PAUSED
+  SUSPENDED
+  EXPIRED
+  TRIAL
+  PENDING_VERIFICATION
+}
+
 enum RoleType {
   SYSTEM_ADMIN // Your platform super admin
   INTERNAL_ADMIN // Your company team
   CUSTOMER_OWNER // Client owner
   CUSTOMER_ADMIN // Client manager
   CUSTOMER_AGENT // Client team member
+}
+
+enum ResellerMemberRole {
+  RESELLER_SUB_ADMIN
+  RESELLER_SUPPORT
 }
 
 enum ServiceType {

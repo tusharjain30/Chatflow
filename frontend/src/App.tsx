@@ -41,9 +41,18 @@ import ResellerCustomerDetail from "./pages/reseller/ResellerCustomerDetail";
 import ResellerPlans from "./pages/reseller/ResellerPlans";
 import ResellerEarnings from "./pages/reseller/ResellerEarnings";
 import ResellerBilling from "./pages/reseller/ResellerBilling";
+import ResellerCampaigns from "./pages/reseller/ResellerCampaigns";
+import ResellerTemplates from "./pages/reseller/ResellerTemplates";
+import ResellerContacts from "./pages/reseller/ResellerContacts";
+import ResellerContactGroups from "./pages/reseller/ResellerContactGroups";
+import ResellerAuditLogs from "./pages/reseller/ResellerAuditLogs";
+import ResellerTeam from "./pages/reseller/ResellerTeam";
+import ResellerTeamList from "./pages/reseller/ResellerTeamList";
 import ResellerSettings from "./pages/reseller/ResellerSettings";
 
+import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import ResellerManagement from "./pages/admin/ResellerManagement";
 import UserManagement from "./pages/admin/UserManagement";
 import PlansManagement from "./pages/admin/PlansManagement";
 import MessageLogs from "./pages/admin/MessageLogs";
@@ -75,6 +84,14 @@ const App = () => (
 
             <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
+            <Route
+              path="/admin/login"
+              element={
+                <PublicOnlyRoute portal="admin">
+                  <AdminLogin />
+                </PublicOnlyRoute>
+              }
+            />
             <Route
               path="/reseller/login"
               element={
@@ -131,6 +148,38 @@ const App = () => (
               }
             />
             <Route
+              path="/reseller/campaigns"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerCampaigns />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/templates"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerTemplates />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/contacts"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerContacts />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/contact-groups"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerContactGroups />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/reseller/plans"
               element={
                 <ProtectedRoute portal="reseller">
@@ -155,6 +204,30 @@ const App = () => (
               }
             />
             <Route
+              path="/reseller/team"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerTeam />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/team/list"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerTeamList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reseller/audit"
+              element={
+                <ProtectedRoute portal="reseller">
+                  <ResellerAuditLogs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/reseller/settings"
               element={
                 <ProtectedRoute portal="reseller">
@@ -163,12 +236,13 @@ const App = () => (
               }
             />
 
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><UserManagement /></ProtectedRoute>} />
-            <Route path="/admin/plans" element={<ProtectedRoute><PlansManagement /></ProtectedRoute>} />
-            <Route path="/admin/logs" element={<ProtectedRoute><MessageLogs /></ProtectedRoute>} />
-            <Route path="/admin/payments" element={<ProtectedRoute><PaymentHistory /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute><SystemSettings /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute portal="admin"><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/resellers" element={<ProtectedRoute portal="admin"><ResellerManagement /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute portal="admin"><UserManagement /></ProtectedRoute>} />
+            <Route path="/admin/plans" element={<ProtectedRoute portal="admin"><PlansManagement /></ProtectedRoute>} />
+            <Route path="/admin/logs" element={<ProtectedRoute portal="admin"><MessageLogs /></ProtectedRoute>} />
+            <Route path="/admin/payments" element={<ProtectedRoute portal="admin"><PaymentHistory /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute portal="admin"><SystemSettings /></ProtectedRoute>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -1,9 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import type { ResellerSettingsProfile } from "../ResellerSettings";
 
-export default function WhatsAppTab() {
+const STORAGE_KEY = "reseller_whatsapp_config";
+
+export default function WhatsAppTab({
+  profile,
+}: {
+  profile: ResellerSettingsProfile | null;
+}) {
+  const { toast } = useToast();
   const [form, setForm] = useState({
     wabaId: "",
     phoneNumberId: "",
@@ -11,99 +20,111 @@ export default function WhatsAppTab() {
     webhookToken: "",
   });
 
+  useEffect(() => {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      setForm(JSON.parse(raw));
+    } catch {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  const save = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+    toast({
+      title: "WhatsApp configuration saved",
+      description: "Your reseller-side WhatsApp API configuration was stored locally.",
+    });
+  };
+
+  const testConnection = () => {
+    if (!form.wabaId || !form.phoneNumberId || !form.accessToken || !form.webhookToken) {
+      toast({
+        title: "Missing configuration",
+        description: "Complete all WhatsApp API fields before testing connection.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Configuration looks valid",
+      description: "Required WhatsApp API fields are present and ready for use.",
+    });
+  };
+
   return (
     <div className="space-y-6">
-
-      {/* HEADER */}
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">
-          WhatsApp API Configuration
-        </h2>
+        <h2 className="text-lg font-semibold text-gray-900">WhatsApp API Configuration</h2>
         <p className="text-sm text-gray-500">
-          Connect your Meta (WABA) account to enable messaging
+          Keep reseller-side Meta credentials and webhook verification details ready.
         </p>
       </div>
 
-      {/* FORM */}
       <div className="grid gap-4 md:grid-cols-2">
-
-        {/* WABA ID */}
         <div className="space-y-2">
           <Label>WABA ID</Label>
           <Input
-            placeholder="WhatsApp Business Account ID"
-            className="bg-gray-50 border focus:border-[#16A249]"
-            onChange={(e) =>
-              setForm((p) => ({ ...p, wabaId: e.target.value }))
+            value={form.wabaId}
+            className="border bg-gray-50 focus:border-[#16A249]"
+            onChange={(event) =>
+              setForm((current) => ({ ...current, wabaId: event.target.value }))
             }
           />
         </div>
 
-        {/* PHONE NUMBER ID */}
         <div className="space-y-2">
           <Label>Phone Number ID</Label>
           <Input
-            placeholder="Meta Phone Number ID"
-            className="bg-gray-50 border focus:border-[#16A249]"
-            onChange={(e) =>
-              setForm((p) => ({ ...p, phoneNumberId: e.target.value }))
+            value={form.phoneNumberId}
+            className="border bg-gray-50 focus:border-[#16A249]"
+            onChange={(event) =>
+              setForm((current) => ({ ...current, phoneNumberId: event.target.value }))
             }
           />
         </div>
 
-        {/* ACCESS TOKEN */}
         <div className="space-y-2 md:col-span-2">
           <Label>Access Token</Label>
           <Input
             type="password"
-            placeholder="Paste permanent access token"
-            className="bg-gray-50 border focus:border-[#16A249]"
-            onChange={(e) =>
-              setForm((p) => ({ ...p, accessToken: e.target.value }))
+            value={form.accessToken}
+            className="border bg-gray-50 focus:border-[#16A249]"
+            onChange={(event) =>
+              setForm((current) => ({ ...current, accessToken: event.target.value }))
             }
           />
         </div>
 
-        {/* WEBHOOK TOKEN */}
         <div className="space-y-2 md:col-span-2">
           <Label>Webhook Verify Token</Label>
           <Input
-            placeholder="Custom verify token"
-            className="bg-gray-50 border focus:border-[#16A249]"
-            onChange={(e) =>
-              setForm((p) => ({ ...p, webhookToken: e.target.value }))
+            value={form.webhookToken}
+            className="border bg-gray-50 focus:border-[#16A249]"
+            onChange={(event) =>
+              setForm((current) => ({ ...current, webhookToken: event.target.value }))
             }
           />
         </div>
-
       </div>
 
-      {/* WEBHOOK INFO BOX */}
       <div className="rounded-xl border bg-gray-50 p-4 text-sm text-gray-600">
-        <p className="font-medium text-gray-800 mb-1">
-          Webhook URL
-        </p>
-        <p className="font-mono text-xs break-all">
-          https://yourdomain.com/api/webhook/meta
+        <p className="mb-1 font-medium text-gray-800">Webhook URL</p>
+        <p className="break-all font-mono text-xs">
+          https://yourdomain.com/api/webhook/meta/{profile?.companyName?.toLowerCase().replace(/\s+/g, "-") || "reseller"}
         </p>
       </div>
 
-      {/* ACTIONS */}
       <div className="flex justify-end gap-3">
-
-        <Button
-          variant="outline"
-          className="border-gray-300 text-gray-700 hover:bg-gray-100"
-        >
+        <Button variant="outline" className="rounded-xl" onClick={testConnection}>
           Test Connection
         </Button>
-
-        <Button className="bg-[#16A249] text-white hover:bg-[#12813a]">
+        <Button className="rounded-xl bg-[#16A249] text-white hover:bg-[#12813a]" onClick={save}>
           Save Configuration
         </Button>
-
       </div>
-
     </div>
   );
 }

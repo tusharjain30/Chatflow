@@ -15,6 +15,10 @@ const { addResellerTeamMemberSchema } = require("../../../schema/reseller/custom
 const { sendResellerTestMessageSchema } = require("../../../schema/reseller/customer/sendTestMessage.schema");
 const { bulkResellerCustomerStatusSchema } = require("../../../schema/reseller/customer/bulkStatus.schema");
 const { bulkSendResellerCampaignSchema } = require("../../../schema/reseller/customer/bulkSendCampaign.schema");
+const { listResellerCustomerUsersSchema } = require("../../../schema/reseller/customer/listUsers.schema");
+const { updateResellerCustomerUserSchema } = require("../../../schema/reseller/customer/updateUser.schema");
+const { removeResellerCustomerUserSchema } = require("../../../schema/reseller/customer/removeUser.schema");
+const { loginAsResellerCustomerSchema } = require("../../../schema/reseller/customer/loginAs.schema");
 
 const listRoute = require("./list");
 const createRoute = require("./create");
@@ -28,6 +32,13 @@ const rechargeRoute = require("./recharge");
 const addTeamMemberRoute = require("./addTeamMember");
 const sendTestMessageRoute = require("./sendTestMessage");
 const bulkSendCampaignRoute = require("./bulkSendCampaign");
+const listUsersRoute = require("./listUsers");
+const updateUserRoute = require("./updateUser");
+const removeUserRoute = require("./removeUser");
+const subscriptionsRoute = require("./subscriptions");
+const customerUserDetailsRoute = require("./customerUserDetails");
+
+const loginAsRoute = require("./loginAs");
 
 router.use("/", requireAuth, validator(resellerCustomersQuerySchema, "query"), listRoute);
 router.use("/create", requireAuth, validator(createResellerCustomerSchema, "body"), createRoute);
@@ -41,5 +52,11 @@ router.use("/recharge", requireAuth, validator(rechargeResellerCustomerSchema, "
 router.use("/add-team-member", requireAuth, validator(addResellerTeamMemberSchema, "body"), addTeamMemberRoute);
 router.use("/send-test-message", requireAuth, validator(sendResellerTestMessageSchema, "body"), sendTestMessageRoute);
 router.use("/bulk-send-campaign", requireAuth, validator(bulkSendResellerCampaignSchema, "body"), bulkSendCampaignRoute);
+router.use("/users", requireAuth, validator(listResellerCustomerUsersSchema, "query"), listUsersRoute);
+router.use("/update-user", requireAuth, validator(updateResellerCustomerUserSchema, "body"), updateUserRoute);
+router.use("/remove-user", requireAuth, validator(removeResellerCustomerUserSchema, "body"), removeUserRoute);
+router.use("/subscriptions", requireAuth, subscriptionsRoute);
+router.use("/customer-users", requireAuth, customerUserDetailsRoute);
+router.use("/login-as", requireAuth, validator(loginAsResellerCustomerSchema, "body"), loginAsRoute);
 
 module.exports = router;
