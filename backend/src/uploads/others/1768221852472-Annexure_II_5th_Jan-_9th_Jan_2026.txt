@@ -1,0 +1,226 @@
+ANNEXURE – II REPORT & NEXT ACTIONS
+
+Duration: 5th December 2025 – 9th Jan 2026
+
+_____________________________________________________________
+
+Shweta :
+
+1:  VCN Master theme and Product update 
+2: Acom form integrate via API
+3: continuity care backend work and website updating 
+4: sul green website need to responsive
+5: WhatsApp UI dashboard
+6: lead portal fetch : fb leads 
+7:MLM UI work
+8: Lending cart UI work
+
+•	Frontend & backend – Continuity Care
+•	SPB Pipes document will be provided by Rakesh Sir
+•	Lead Portal – Facebook login & API integration (Accom)
+
+
+Important work:
+
+1:API creation and Architecture design  as shared 
+2:Close Acom website with landind pages asap
+4: https://www.fixmytrip.in/ website copy mice travel website  
+5:In lead portal when download the offer letter name as candidate name should me must
+
+New project : SB Pipes CRM Development 
+
+
+Monitoring work :
+
+1: Bill generated and send to WhatsApp (flights hub Invoice portal )
+2: Smartsheet solution need to smooth working (js need to change or build google sheet)
+3:Vibrantick website development 
+4:Sul green Backend work
+
+-------------------------------------------------
+
+Yash:
+
+1: MLM Development 
+2: Sul Green API and Backend
+3: WhatsApp Quotender automation
+5:GNIEM Session update on ERP 
+
+•	MLM wallet, payout & KYC – Deadline: 30 January
+•	Client message for KYC (DigiLocker)
+•	Smartsheet (Flighthub) – Deadline: 15 January
+
+
+
+Urgent work :
+
+1: Bill generated and send to WhatsApp (flights hub Invoice portal )
+2: Smartsheet Google Sheet API or other solutions
+3
+d:Customer report pending  amount-
+e: Ledger - working
+
+4:remove loader on invoice portal and 
+
+5:Invoice leader issue  with name 
+
+6: Customer option is not working in Invoice
+
+
+Deployment work 
+
+1:Smartsheet school 
+2: MSI ERP tool
+
+
+-----------------------------------------------------------
+Gracy :
+
+1:Vibrantick website  - 
+
+
+Important work
+
+
+1: add  course name with Fee MSI website 
+2: Admission Registration form for technocoderz
+4:  college entry landing pages 
+6: Rungta final landing pages call 
+7:Add pic in techno coderz website 
+8:Chat in MSI website 
+
+•	Vibrantick site – Phase 1 deadline: 13 January
+•	MSI website and dashboard changes
+
+
+Just go through website : 
+
+- https://www.cbitss.in// 
+-  https://o7services.com/
+
+-----------------------------------------------------------
+
+Abhash: 
+
+1:Lendind cart Development 
+
+2: Social Block (Add-ons) - 14 Jan Onwards
+•	Page & group selection
+•	Custom page selection UI
+•	Scheduling UI (Reference: Buffer)
+•	Loader while connecting Facebook pages
+•	Post preview feature
+•	Disconnect page via typed command
+•	Reel & story upload integration
+
+3: Architecture planning & deployment – In Progress
+
+Urgent work
+
+•    Subscription plan  of foliomax 
+•	Foliomax – Logo & color finalization
+•	APIs integration
+•	Newsletter frontend
+
+.............................................................
+
+Mayank: 
+
+•	College Entry – Counter on homepage dashboard
+•	Font formatting of landing page (College Entry)
+•	Firebase (OTP) – Phase 2
+•	MLM related tasks
+chat in College Entry website 
+
+
+
+Important work:
+
+1: college entry apply form as discussed 
+2: college enty comple by 31 December 2025
+3: UI need to changes as per discussion -college pic not visible properly 
+4:study and discuss -https://universitykart.com/
+
+Note : for college entry  must follow https://www.getmyuni.com/
+
+
+.............................................................
+
+Tushar 
+
+•	Lending Cart – Deadline: 30 January
+•	Modules: Lender, Broker, Customer
+•	WhatsApp integration with dashboard – Deadline: 18 January
+•	Bot Phase – On hold
+
+
+
+Important task 
+
+1:Whastapp API Integration with UI Dashboard 
+2: SDK development with proper documentation
+
+.............................................................
+Aniket
+1: •	Kartmania UI – Deadline: 14 January
+.............................................................
+Rakesh
+•	SmartSchool project
+•	MSI ERP
+•	AI chatbot for Quote Tender
+•	Message to Quotender for Meta Business Account access
+•	SPB Pipes document will be provided by Rakesh Sir
+
+
+.............................................................
+
+Testing and urgent work: 
+
+1. Diagnoedge Labs
+Status: under testing
+________________________________________
+2. himrealtors.in
+Status: In Progress
+•	Images need to Updated
+________________________________________
+3. premierpathreality.com
+Status: Pending
+•	Mobile responsiveness issues
+•	Logo needs to be added to the website
+
+________________________________________
+3. MSI Website
+Status: Testing 
+________________________________________
+7. Taxi Website – ridekaro.in
+Status: Testing
+
+________________________________________
+8. College Entry
+Status: Testing
+
+________________________________________
+9: acom
+Status: Testing
+________________________________________
+9: continuity care
+Status: Testing
+________________________________________
+10: foliomax
+Status: Testing
+________________________________________
+11. Sul Green USA (Shweta & Yashdeep)
+Status: In Progress
+•	Mobile responsiveness issues 
+•	Backend work and API
+
+________________________________________
+12. Amendment Work – Lead Portal (Shweta)
+•	Facebook lead sign-in with assignment 
+________________________________________
+13. The FlightsHub Invoice Portal 
+•	Employee management module to be added
+•        smartsheet 
+________________________________________
+End of Annexure – II
+
