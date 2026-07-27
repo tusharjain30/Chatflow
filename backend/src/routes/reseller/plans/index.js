@@ -2,9 +2,7 @@ const express = require("express");
 
 const RESPONSE_CODES = require("../../../config/responseCode");
 const requireAuth = require("../../../middleware/requireAuth");
-const { PrismaClient } = require("../../../generated/prisma/client");
-
-const prisma = new PrismaClient();
+import prisma from "../../../config/prisma";
 const router = express.Router();
 
 router.get("/", requireAuth, async (req, res) => {

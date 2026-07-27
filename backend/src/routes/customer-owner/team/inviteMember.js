@@ -3,8 +3,7 @@ const router = express.Router();
 
 const RESPONSE_CODES = require("../../../config/responseCode");
 
-const { PrismaClient } = require("../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../config/prisma";
 
 const crypto = require("crypto");
 const sendEmail = require("../../../utils/sendEmail");

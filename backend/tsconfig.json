@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Bundler",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "allowJs": true,
+    "checkJs": false,
+    "types": [
+      "node"
+    ],
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "paths": {
+    "@/*": [
+      "/src/*"
+    ]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

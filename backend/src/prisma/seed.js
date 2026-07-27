@@ -1,7 +1,4 @@
-const bcrypt = require("bcrypt");
-const { PrismaClient } = require("../generated/prisma/client");
-
-const prisma = new PrismaClient();
+const prisma = require("../config/prisma");
 
 const OWNER_ROLE_NAME = "CUSTOMER_OWNER";
 const OWNER_EMAIL = "owner@chatflow-demo.com";

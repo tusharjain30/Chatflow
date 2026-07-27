@@ -1,6 +1,5 @@
 const RESPONSE_CODES = require("../../../../config/responseCode");
-const { PrismaClient } = require("../../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../../config/prisma";
 const express = require("express");
 const router = express.Router({ mergeParams: true });
 

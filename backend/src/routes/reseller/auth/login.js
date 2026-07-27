@@ -3,9 +3,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const RESPONSE_CODES = require("../../../config/responseCode");
-const { PrismaClient } = require("../../../generated/prisma/client");
-
-const prisma = new PrismaClient();
+import prisma from "../../../config/prisma";
 const router = express.Router();
 
 router.post("/", async (req, res) => {

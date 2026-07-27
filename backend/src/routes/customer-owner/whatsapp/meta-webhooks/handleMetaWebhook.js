@@ -1,5 +1,4 @@
-const { PrismaClient } = require("../../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../../config/prisma";
 
 const sendWhatsAppMessage = require("../../../../services/Meta/sendMessage");
 

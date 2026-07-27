@@ -3,8 +3,7 @@ const RESPONSE_CODES = require("../../../../config/responseCode");
 const express = require("express");
 const router = express.Router();
 
-const { PrismaClient } = require("../../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../../config/prisma";
 
 router.delete("/", async (req, res) => {
     try {

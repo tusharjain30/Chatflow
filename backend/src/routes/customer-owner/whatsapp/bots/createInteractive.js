@@ -1,8 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { PrismaClient } = require("../../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../../config/prisma";
 
 const uploadMediaToMeta = require("../../../../services/Meta/uploadMediaToMeta");
 

@@ -2,9 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 
 const RESPONSE_CODES = require("../../../config/responseCode");
-const { PrismaClient } = require("../../../generated/prisma/client");
-
-const prisma = new PrismaClient();
+import prisma from "../../../config/prisma";
 const router = express.Router();
 
 const buildUserName = (companyName, ownerEmail) => {

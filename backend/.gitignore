@@ -1,5 +1,7 @@
 node_modules
 /generated/prisma
+/src/generated
+/dist
 /public/logs/
 .env
-/prisma/migrations
+/src/prisma/migrations

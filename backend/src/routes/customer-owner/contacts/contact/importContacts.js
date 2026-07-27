@@ -2,8 +2,7 @@ const RESPONSE_CODES = require("../../../../config/responseCode");
 const express = require("express");
 const router = express.Router();
 
-const { PrismaClient } = require("../../../../generated/prisma/client");
-const prisma = new PrismaClient();
+import prisma from "../../../../config/prisma";
 
 const fs = require("fs");
 const csv = require("csv-parser");
