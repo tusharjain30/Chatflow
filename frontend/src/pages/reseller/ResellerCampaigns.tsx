@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   AlertTriangle,
   BarChart3,
@@ -167,7 +168,7 @@ export default function ResellerCampaigns() {
 
       const response = await fetch(`${API_BASE}/reseller/campaigns?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const json = await response.json();
@@ -196,7 +197,7 @@ export default function ResellerCampaigns() {
       const params = new URLSearchParams({ campaignId });
       const response = await fetch(`${API_BASE}/reseller/campaigns/detail?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const json = await response.json();

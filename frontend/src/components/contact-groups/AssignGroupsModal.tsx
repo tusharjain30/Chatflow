@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import toast from "react-hot-toast";
+import { getAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -37,7 +38,7 @@ export default function AssignGroupsModal({
   const [assignLoading, setAssignLoading] = useState(false);
   const [search, setSearch] = useState("");
 
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   /* ---------------- FETCH CONTACTS ---------------- */
   const fetchContacts = async () => {

@@ -5,6 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import Select from "react-select";
+import { getAuthToken } from "@/utils/authStorage";
 
 type Props = {
   contactId: string;
@@ -28,7 +29,7 @@ type Group = {
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 function getAuthHeaders(): Record<string, string> {
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   return {
     "Content-Type": "application/json",

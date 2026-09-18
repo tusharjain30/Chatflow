@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Search,
   Plus,
@@ -54,7 +55,7 @@ type Contact = {
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   return {
     "Content-Type": "application/json",
@@ -400,7 +401,7 @@ export default function Contacts() {
       const res = await fetch(`${API_BASE}/user/contacts/contact/import`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: formData,
       });
@@ -443,7 +444,7 @@ export default function Contacts() {
 
   const handleExportContacts = async () => {
     try {
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
 
       const res = await fetch(`${API_BASE}/user/contacts/contact/export`, {
         method: "GET",

@@ -13,6 +13,7 @@ import NotificationTab from "./tabs/NotificationTab";
 import SecurityTab from "./tabs/SecurityTab";
 import WhatsAppTab from "./tabs/WhatsAppTab";
 import IntegrationsTab from "./tabs/IntegrationsTab";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   FiBell,
   FiCreditCard,
@@ -85,7 +86,7 @@ export default function ResellerSettings() {
     setLoading(true);
     try {
       const headers = {
-        Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        Authorization: `Bearer ${getAuthToken()}`,
       };
 
       const [profileResponse, billingResponse, earningsResponse] = await Promise.all([
@@ -127,7 +128,7 @@ export default function ResellerSettings() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify(payload),
       });
@@ -166,7 +167,7 @@ export default function ResellerSettings() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify(payload),
       });

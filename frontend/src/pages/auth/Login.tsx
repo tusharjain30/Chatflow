@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MessageSquare, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { setAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -78,9 +79,8 @@ export default function Login() {
         throw new Error(json.message || "Login failed");
       }
 
-      // Save token in session
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", "user");
+      // Save customer/owner token without touching admin/reseller sessions
+      setAuthToken("user", json.data.token);
 
       toast({
         title: "Login successful 🎉",

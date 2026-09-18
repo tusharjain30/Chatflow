@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,7 @@ const CreateContactGroupModal = ({ open, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem("auth_token");
+    const token = getAuthToken();
 
     return {
       "Content-Type": "application/json",

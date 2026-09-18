@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ShieldCheck, Sparkles, UserPlus, Users } from "lucide-react";
+import { getAuthToken } from "@/utils/authStorage";
 
 import { ResellerShell } from "@/components/reseller/ResellerShell";
 import { Button } from "@/components/ui/button";
@@ -155,7 +156,7 @@ const navigate = useNavigate();
     setLoading(true);
     try {
       const headers = {
-        Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        Authorization: `Bearer ${getAuthToken()}`,
       };
       const [teamResponse, customersResponse] = await Promise.all([
         fetch(`${API_BASE}/reseller/team`, { headers }),
@@ -190,7 +191,7 @@ const createMember = async () => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        Authorization: `Bearer ${getAuthToken()}`,
       },
       body: JSON.stringify(form),
     });

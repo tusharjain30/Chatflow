@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Layers3,
   MessageSquare,
@@ -86,7 +87,7 @@ const toRequiredNumber = (value: string) => Number(value || 0);
 
 export default function PlansManagement() {
   const { toast } = useToast();
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   const [overview, setOverview] = useState<PlanOverview | null>(null);
   const [items, setItems] = useState<PlanItem[]>([]);

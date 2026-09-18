@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   ArrowRight,
   BarChart3,
@@ -40,7 +41,7 @@ type ResellerPreview = {
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [recentResellers, setRecentResellers] = useState<ResellerPreview[]>([]);
 

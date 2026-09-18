@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   BarChart3,
   Layers3,
@@ -102,7 +103,7 @@ export default function ResellerContactGroups() {
 
       const response = await fetch(`${API_BASE}/reseller/contact-groups?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const json = await response.json();

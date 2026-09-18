@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Search,
   Plus,
@@ -36,7 +37,7 @@ import AssignGroupsModal from "@/components/contact-groups/AssignGroupsModal";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   return {
     "Content-Type": "application/json",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 
 import { AdminLayout } from "@/components/layouts/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,7 @@ const statusStyles = {
 
 export default function PaymentHistory() {
   const { toast } = useToast();
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [resellers, setResellers] = useState<ResellerOption[]>([]);

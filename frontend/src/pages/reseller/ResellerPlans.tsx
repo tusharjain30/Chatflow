@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   ArrowRight,
   Bot,
@@ -75,7 +76,7 @@ export default function ResellerPlans() {
         `${API_BASE}/reseller/plans?page=${page}&limit=10&search=${debouncedSearch}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );

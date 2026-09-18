@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getAuthToken } from "@/utils/authStorage";
 
 import { ResellerShell } from "@/components/reseller/ResellerShell";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export default function ResellerCustomerCreate() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify(form),
       });

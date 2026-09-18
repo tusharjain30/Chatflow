@@ -4,6 +4,7 @@ import { Eye, EyeOff, ShieldCheck } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { setAuthToken } from "@/utils/authStorage";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,8 +52,7 @@ export default function AdminLogin() {
         throw new Error(json.message || "Unable to login");
       }
 
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", "admin");
+      setAuthToken("admin", json.data.token);
 
       await refetchProfile();
 

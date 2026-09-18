@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Activity,
   BadgePercent,
@@ -396,7 +397,7 @@ function ResellerDashboard() {
   const [overview, setOverview] = useState<Overview | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("auth_token");
+    const token = getAuthToken();
     const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     Promise.all([

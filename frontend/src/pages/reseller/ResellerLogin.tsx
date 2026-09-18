@@ -4,6 +4,7 @@ import { ChartNoAxesCombined, Eye, EyeOff } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { setAuthToken } from "@/utils/authStorage";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,8 +52,7 @@ export default function ResellerLogin() {
         throw new Error(json.message || "Unable to login");
       }
 
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", "reseller");
+      setAuthToken("reseller", json.data.token);
 
       await refetchProfile();
 

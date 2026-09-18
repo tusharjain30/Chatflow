@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Activity,
   Building2,
@@ -171,7 +172,7 @@ export default function ResellerCustomers() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
   const selectedCustomers = items.filter((item) =>
     selectedIds.includes(item.id),
   );

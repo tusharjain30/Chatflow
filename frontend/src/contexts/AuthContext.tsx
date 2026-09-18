@@ -5,6 +5,15 @@ import React, {
   useState,
   useCallback,
 } from "react";
+import {
+  clearAuthSession,
+  getAuthToken,
+  migrateLegacyAuthStorage,
+  resolvePortalFromPath,
+  setAuthToken,
+  type Portal,
+  getPortalHome,
+} from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -45,8 +54,6 @@ export type User = {
   } | null;
 };
 
-type Portal = "user" | "reseller" | "admin";
-
 type SupportSession = {
   originToken: string;
   originPortal: Portal;
@@ -83,6 +90,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SUPPORT_SESSION_KEY = "support_session";
 
+migrateLegacyAuthStorage();
+
 /* ================= PROVIDER ================= */
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -105,8 +114,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   /* ========== FETCH PROFILE ========== */
   const fetchProfile = useCallback(async () => {
-    const token = localStorage.getItem("auth_token");
-    const portal = localStorage.getItem("auth_portal") || "user";
+    const portal = resolvePortalFromPath();
+    const token = getAuthToken(portal);
 
     if (!token) {
       setUser(null);
@@ -120,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           ? `${API_BASE}/reseller/profile/me`
           : portal === "admin"
             ? `${API_BASE}/super-admin/profile/get`
-          : `${API_BASE}/user/profile/me`;
+            : `${API_BASE}/user/profile/me`;
 
       const res = await fetch(profileUrl, {
         headers: {
@@ -137,7 +146,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(json.data);
     } catch (err) {
       console.error("Profile fetch failed:", err);
-      logout(); // token invalid → force logout
+      // Only clear the portal that failed — keep other dashboard sessions.
+      clearAuthSession(portal);
+      if (portal === resolvePortalFromPath()) {
+        localStorage.removeItem(SUPPORT_SESSION_KEY);
+        setSupportSession(null);
+      }
+      setUser(null);
     } finally {
       setLoading(false);
     }
@@ -148,39 +163,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchProfile();
   }, [fetchProfile]);
 
-  /* ========== LOGOUT ========== */
+  /* ========== LOGOUT (current portal only) ========== */
   const logout = useCallback(() => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user");
-    localStorage.removeItem("auth_portal");
-    localStorage.removeItem(SUPPORT_SESSION_KEY);
-    setSupportSession(null);
+    const portal = resolvePortalFromPath();
+    clearAuthSession(portal);
+
+    // Support/impersonation sessions only apply on the customer portal.
+    if (portal === "user") {
+      localStorage.removeItem(SUPPORT_SESSION_KEY);
+      setSupportSession(null);
+    }
+
     setUser(null);
   }, []);
 
   const restoreSupportSession = useCallback(async () => {
-    const originToken = supportSession?.originToken || supportSession?.resellerToken;
-    const originPortal = supportSession?.originPortal || supportSession?.resellerPortal;
+    const originToken =
+      supportSession?.originToken || supportSession?.resellerToken;
+    const originPortal =
+      supportSession?.originPortal || supportSession?.resellerPortal;
 
     if (!originToken || !originPortal) {
       logout();
       return;
     }
 
-    localStorage.setItem("auth_token", originToken);
-    localStorage.setItem("auth_portal", originPortal);
+    const currentPortal = resolvePortalFromPath();
+    setAuthToken(originPortal, originToken);
+    if (currentPortal !== originPortal) {
+      clearAuthSession(currentPortal);
+    }
     localStorage.removeItem(SUPPORT_SESSION_KEY);
     setSupportSession(null);
     setUser(null);
     setLoading(false);
-    window.location.assign(
-      originPortal === "admin" ? "/admin" : originPortal === "reseller" ? "/reseller" : "/",
-    );
+    window.location.assign(getPortalHome(originPortal));
   }, [logout, supportSession]);
 
   const restoreResellerSession = useCallback(async () => {
     await restoreSupportSession();
   }, [restoreSupportSession]);
+
+  const currentPortal = resolvePortalFromPath();
 
   return (
     <AuthContext.Provider
@@ -191,8 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.userType === "ADMIN",
         isReseller: user?.userType === "RESELLER",
         isImpersonatingCustomer:
-          (localStorage.getItem("auth_portal") || "user") === "user" &&
-          !!supportSession,
+          currentPortal === "user" && !!supportSession,
         isSupportSessionActive: !!supportSession,
         supportSession,
         logout,

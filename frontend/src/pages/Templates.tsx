@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Modal } from "@/components/shared/Modal";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Select,
   SelectContent,
@@ -172,7 +173,7 @@ export default function Templates() {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
       const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
@@ -252,7 +253,7 @@ export default function Templates() {
 
     try {
       setDeletingTemplateId(template.id);
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
 
       const res = await fetch(`${API_BASE}/user/whatsapp/template/delete`, {
         method: "DELETE",
@@ -293,7 +294,7 @@ export default function Templates() {
   const handleDuplicate = async (template: Template) => {
     try {
       setDuplicatingTemplateId(template.id);
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
 
       const res = await fetch(`${API_BASE}/user/whatsapp/template/duplicate`, {
         method: "POST",

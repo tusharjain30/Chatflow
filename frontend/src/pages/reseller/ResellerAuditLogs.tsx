@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { ResellerShell } from "@/components/reseller/ResellerShell";
+import { getAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -50,7 +51,7 @@ export default function ResellerAuditLogs() {
         `${API_BASE}/reseller/audit/plans?page=${planPage}&limit=${limit}&search=${debouncedPlanSearch}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );
@@ -93,7 +94,7 @@ export default function ResellerAuditLogs() {
         `${API_BASE}/reseller/audit/billing?page=${billingPage}&limit=${limit}&search=${debouncedBillingSearch}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );
@@ -129,7 +130,7 @@ export default function ResellerAuditLogs() {
         `${API_BASE}/reseller/audit/users?page=${userPage}&limit=${limit}&search=${debouncedUserSearch}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );

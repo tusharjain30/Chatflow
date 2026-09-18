@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   ArrowLeftRight,
   MessageSquare,
@@ -76,7 +77,7 @@ export function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const token = localStorage.getItem("auth_token");
+        const token = getAuthToken();
 
         const res = await fetch(`${API_BASE}/user/dashboard/stats`, {
           headers: {

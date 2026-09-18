@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthToken, setAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -85,7 +86,7 @@ type CustomerItem = {
 export default function UserManagement() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const adminToken = localStorage.getItem("auth_token");
+  const adminToken = getAuthToken("admin");
 
   const [resellers, setResellers] = useState<ResellerItem[]>([]);
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
@@ -217,8 +218,10 @@ export default function UserManagement() {
       saveSupportSession(user?.email || "Super Admin", {
         resellerCompanyName: json.data.supportSession?.resellerCompanyName,
       });
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", json.data.portal || "reseller");
+      setAuthToken(
+        (json.data.portal as "reseller" | "user" | "admin") || "reseller",
+        json.data.token,
+      );
       window.location.assign(json.data.redirectTo || "/reseller");
     } catch (error) {
       toast({
@@ -255,8 +258,10 @@ export default function UserManagement() {
       saveSupportSession(user?.email || "Super Admin", {
         customerCompanyName: json.data.supportSession?.customerCompanyName,
       });
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", json.data.portal || "user");
+      setAuthToken(
+        (json.data.portal as "reseller" | "user" | "admin") || "user",
+        json.data.token,
+      );
       window.location.assign(json.data.redirectTo || "/");
     } catch (error) {
       toast({

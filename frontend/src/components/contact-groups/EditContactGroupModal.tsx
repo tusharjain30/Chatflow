@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { getAuthToken } from "@/utils/authStorage";
 
 import {
   Dialog,
@@ -13,7 +14,7 @@ import {
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
 const getAuthHeaders = () => {
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   return {
     "Content-Type": "application/json",

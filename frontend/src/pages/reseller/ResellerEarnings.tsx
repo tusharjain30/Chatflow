@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BadgePercent, ReceiptText, Wallet } from "lucide-react";
+import { getAuthToken } from "@/utils/authStorage";
 
 import { ResellerShell } from "@/components/reseller/ResellerShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,7 @@ export default function ResellerEarnings() {
     const fetchEarnings = async () => {
       const response = await fetch(`${API_BASE}/reseller/earnings`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const json = await response.json();

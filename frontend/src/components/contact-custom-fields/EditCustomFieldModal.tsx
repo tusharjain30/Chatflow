@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Dialog,
   DialogContent,
@@ -52,7 +53,7 @@ export default function EditCustomFieldModal({
   const [type, setType] = useState("text");
   const [loading, setLoading] = useState(false);
 
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   /* ---------------- PREFILL ---------------- */
   useEffect(() => {

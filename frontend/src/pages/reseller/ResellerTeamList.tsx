@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   UserPlus,
   ShieldCheck,
@@ -95,7 +96,7 @@ export default function ResellerTeamList() {
         `${API_BASE}/reseller/team?${params.toString()}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );
@@ -135,7 +136,7 @@ export default function ResellerTeamList() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify({
           memberId,
@@ -218,7 +219,7 @@ export default function ResellerTeamList() {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify({ memberId }),
       });

@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { getAuthToken, setAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -196,7 +197,7 @@ export default function ResellerCustomerDetail() {
         `${API_BASE}/reseller/customers/subscriptions?accountId=${id}&page=${subPage}&limit=${limit}&search=${debouncedSearch}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
         },
       );
@@ -218,7 +219,7 @@ export default function ResellerCustomerDetail() {
       `${API_BASE}/reseller/customers/detail?accountId=${id}`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       },
     );
@@ -263,7 +264,7 @@ export default function ResellerCustomerDetail() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
         body: JSON.stringify({
           accountId: id,
@@ -305,7 +306,7 @@ export default function ResellerCustomerDetail() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
           body: JSON.stringify({
             accountId: id,
@@ -356,7 +357,7 @@ export default function ResellerCustomerDetail() {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
           body: JSON.stringify({
             accountId: id,
@@ -397,7 +398,7 @@ export default function ResellerCustomerDetail() {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            Authorization: `Bearer ${getAuthToken()}`,
           },
           body: JSON.stringify({
             accountId: id,
@@ -458,10 +459,9 @@ export default function ResellerCustomerDetail() {
     });
 
     try {
-      const resellerToken = localStorage.getItem("auth_token");
-      const resellerPortal = localStorage.getItem("auth_portal");
+      const resellerToken = getAuthToken("reseller");
 
-      if (!resellerToken || resellerPortal !== "reseller") {
+      if (!resellerToken) {
         throw new Error("Current reseller session is not available");
       }
 
@@ -495,8 +495,7 @@ export default function ResellerCustomerDetail() {
         }),
       );
 
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", "user");
+      setAuthToken("user", json.data.token);
 
       // ✅ Success state
       await Swal.fire({

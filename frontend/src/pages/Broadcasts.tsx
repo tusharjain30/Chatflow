@@ -23,6 +23,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Dialog,
   DialogContent,
@@ -98,7 +99,7 @@ const defaultEditForm = {
 };
 
 function authHeaders() {
-  return { Authorization: `Bearer ${localStorage.getItem("auth_token")}` };
+  return { Authorization: `Bearer ${getAuthToken()}` };
 }
 
 function normalizeStatus(status: string) {

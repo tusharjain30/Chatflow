@@ -27,6 +27,7 @@ import {
 import { Modal } from "@/components/shared/Modal";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthToken, setAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:4000";
 
@@ -97,7 +98,7 @@ const initialForm: CreateForm = {
 export default function ResellerManagement() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken("admin");
 
   const [overview, setOverview] = useState<OverviewStats | null>(null);
   const [items, setItems] = useState<ResellerItem[]>([]);
@@ -295,8 +296,10 @@ export default function ResellerManagement() {
           resellerCompanyName: json.data.supportSession?.resellerCompanyName,
         }),
       );
-      localStorage.setItem("auth_token", json.data.token);
-      localStorage.setItem("auth_portal", json.data.portal || "reseller");
+      setAuthToken(
+        (json.data.portal as "reseller" | "user" | "admin") || "reseller",
+        json.data.token,
+      );
       window.location.assign(json.data.redirectTo || "/reseller");
     } catch (error) {
       toast({

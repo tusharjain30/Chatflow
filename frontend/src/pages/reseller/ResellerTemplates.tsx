@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   BarChart3,
   CheckCircle2,
@@ -109,7 +110,7 @@ export default function ResellerTemplates() {
 
       const response = await fetch(`${API_BASE}/reseller/templates?${params.toString()}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${getAuthToken()}`,
         },
       });
       const json = await response.json();

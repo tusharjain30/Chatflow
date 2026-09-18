@@ -4,6 +4,7 @@ import { Header } from "@/components/dashboard/Header";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Card,
   CardContent,
@@ -714,7 +715,7 @@ export default function TemplateCreate() {
       formData.append("locationDetails", JSON.stringify(locationDetails));
       if (headerFile) formData.append("file", headerFile);
 
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
       const url = isEditMode
         ? `${API_BASE}/user/whatsapp/template/update`
         : `${API_BASE}/user/whatsapp/template/create`;

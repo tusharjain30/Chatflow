@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { getAuthToken } from "@/utils/authStorage";
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,7 @@ export default function CreateCustomFieldModal({
 
   const { toast } = useToast();
 
-  const token = localStorage.getItem("auth_token");
+  const token = getAuthToken();
 
   const handleCreate = async () => {
     if (!name.trim()) {

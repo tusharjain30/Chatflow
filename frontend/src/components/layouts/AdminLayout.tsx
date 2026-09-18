@@ -8,14 +8,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Shield,
-  ArrowLeft,
   Building2,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useState } from "react";
-import { NavLink, useLocation, Navigate, Link } from "react-router-dom";
+import { NavLink, useLocation, Navigate, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { getAuthToken } from "@/utils/authStorage";
 
 interface NavItemProps {
   icon: React.ElementType;
@@ -47,15 +48,21 @@ function NavItem({ icon: Icon, label, to, collapsed }: NavItemProps) {
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
-  const { isAuthenticated, isAdmin, user } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
 
   if (
     !isAuthenticated ||
     !isAdmin ||
-    localStorage.getItem("auth_portal") !== "admin"
+    !getAuthToken("admin")
   ) {
     return <Navigate to="/admin/login" replace />;
   }
+
+  const handleLogout = () => {
+    logout();
+    navigate("/admin/login", { replace: true });
+  };
 
   const navItems = [
     { icon: LayoutDashboard, label: "Overview", to: "/admin" },
@@ -132,21 +139,19 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        {/* Back to Dashboard */}
+        {/* Logout */}
         <div className="px-3 pb-4">
           <Separator className="my-3" />
           <Button
             variant="ghost"
-            asChild
+            onClick={handleLogout}
             className={cn(
-              "w-full justify-start",
+              "w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10",
               collapsed && "justify-center",
             )}
           >
-            <Link to="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {!collapsed && "Logout"}
-            </Link>
+            <LogOut className={cn("h-4 w-4", !collapsed && "mr-2")} />
+            {!collapsed && "Logout"}
           </Button>
         </div>
       </aside>

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Calendar, Layers, Clock, FileText, Search } from "lucide-react";
+import { getAuthToken } from "@/utils/authStorage";
 
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3001";
 
@@ -116,7 +117,7 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
     try {
       setLoading(true);
 
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
       const payload = {
         ...form,
         isScheduled: false,
@@ -170,7 +171,7 @@ export default function CreateCampaignModal({ open, setOpen, onSuccess }: any) {
     try {
       setTemplateLoading(true);
 
-      const token = localStorage.getItem("auth_token");
+      const token = getAuthToken();
 
       const params = new URLSearchParams({
         page: String(pageNumber),
