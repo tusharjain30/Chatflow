@@ -4,10 +4,35 @@ const RESPONSE_CODES = require("../../../config/responseCode");
 const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
+const ACCOUNT_SETTING_KEYS = [
+  "companyName",
+  "address",
+  "city",
+  "state",
+  "zipCode",
+  "country",
+  "timezone",
+  "notificationSoundEnabled",
+  "campaignResendEnabled",
+];
+
 router.put("/", async (req, res) => {
   try {
     const { accountId, userId } = req.auth;
-    const { companyName, firstName, lastName, phone } = req.body;
+    const {
+      companyName,
+      firstName,
+      lastName,
+      phone,
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      timezone,
+      notificationSoundEnabled,
+      campaignResendEnabled,
+    } = req.body;
 
     const owner = await prisma.user.findFirst({
       where: {
@@ -46,13 +71,29 @@ router.put("/", async (req, res) => {
       }
     }
 
+    const accountData = {};
+    const incoming = {
+      companyName,
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      timezone,
+      notificationSoundEnabled,
+      campaignResendEnabled,
+    };
+    for (const key of ACCOUNT_SETTING_KEYS) {
+      if (incoming[key] !== undefined) accountData[key] = incoming[key];
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
-      await tx.customerAccount.update({
-        where: { id: accountId },
-        data: {
-          ...(companyName !== undefined ? { companyName } : {}),
-        },
-      });
+      if (Object.keys(accountData).length > 0) {
+        await tx.customerAccount.update({
+          where: { id: accountId },
+          data: accountData,
+        });
+      }
 
       return tx.user.update({
         where: { id: userId },
@@ -71,6 +112,14 @@ router.put("/", async (req, res) => {
             select: {
               id: true,
               companyName: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              country: true,
+              timezone: true,
+              notificationSoundEnabled: true,
+              campaignResendEnabled: true,
               updatedAt: true,
             },
           },
@@ -88,7 +137,7 @@ router.put("/", async (req, res) => {
     console.log("Account Update Error:", error);
     return res.status(RESPONSE_CODES.ERROR).json({
       status: 0,
-      message: "Internal server error",
+      message: error?.message || "Internal server error",
       statusCode: RESPONSE_CODES.ERROR,
       data: {},
     });

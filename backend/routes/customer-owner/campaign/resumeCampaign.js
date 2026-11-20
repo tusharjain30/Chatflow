@@ -5,15 +5,14 @@ const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
 const RESPONSE_CODES = require("../../../config/responseCode");
+const { enqueueCampaignBatches, removeCampaignQueueJobs } = require("../../../queue");
+const { emitToAccount } = require("../../../socket");
 
 router.post("/", async (req, res) => {
   try {
     const { campaignId } = req.body;
     const { accountId } = req.auth;
 
-    // =========================
-    // Validate Campaign
-    // =========================
     const campaign = await prisma.campaign.findFirst({
       where: {
         id: campaignId,
@@ -31,9 +30,6 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Business Validation
-    // =========================
     if (campaign.status !== "PAUSED") {
       return res.status(RESPONSE_CODES.BAD_REQUEST).json({
         status: 0,
@@ -59,129 +55,68 @@ router.post("/", async (req, res) => {
       });
     }
 
-    await prisma.campaign.update({
-      where: { id: campaignId },
-      data: {
-        status: "RUNNING",
-        startedAt: campaign.startedAt || new Date(),
-        completedAt: null,
-      },
-    });
+    const batchSize = campaign.batchSize || 50;
+    const totalBatches = Math.ceil(pendingCount / batchSize);
+    const jobs = [];
 
-    await prisma.campaignLog.create({
-      data: {
+    for (let i = 0; i < totalBatches; i++) {
+      const remaining = pendingCount - i * batchSize;
+      jobs.push({
         campaignId,
-        type: "INFO",
-        message: `Campaign resumed with ${pendingCount} pending contacts`,
-      },
+        batchNumber: i + 1,
+        totalRecords: Math.min(batchSize, remaining),
+        status: "PENDING",
+      });
+    }
+
+    await removeCampaignQueueJobs(campaignId);
+
+    const createdJobs = await prisma.$transaction(async (tx) => {
+      await tx.campaignJob.deleteMany({ where: { campaignId } });
+      await tx.campaignJob.createMany({ data: jobs });
+
+      const persisted = await tx.campaignJob.findMany({
+        where: { campaignId },
+        orderBy: { batchNumber: "asc" },
+        select: {
+          id: true,
+          batchNumber: true,
+          totalRecords: true,
+        },
+      });
+
+      await tx.campaign.update({
+        where: { id: campaignId },
+        data: {
+          status: "RUNNING",
+          startedAt: campaign.startedAt || new Date(),
+          completedAt: null,
+        },
+      });
+
+      await tx.campaignLog.create({
+        data: {
+          campaignId,
+          type: "INFO",
+          message: `Campaign resumed with ${pendingCount} pending contacts in ${totalBatches} batches (BullMQ)`,
+        },
+      });
+
+      return persisted;
     });
 
-    // Simple background loop until queue worker is introduced.
-    setImmediate(async () => {
-      try {
-        const batchSize = campaign.batchSize || 50;
-        const delayInSeconds = campaign.delayInSeconds || 2;
+    await enqueueCampaignBatches({
+      campaignId,
+      accountId,
+      jobs: createdJobs,
+      delayInSeconds: campaign.delayInSeconds || 2,
+    });
 
-        while (true) {
-          const latest = await prisma.campaign.findUnique({
-            where: { id: campaignId },
-            select: { status: true },
-          });
-
-          if (!latest || latest.status !== "RUNNING") {
-            return;
-          }
-
-          const audiences = await prisma.campaignAudience.findMany({
-            where: {
-              campaignId,
-              status: "PENDING",
-            },
-            take: batchSize,
-            include: {
-              contact: true,
-            },
-          });
-
-          if (!audiences.length) {
-            const remainingPending = await prisma.campaignAudience.count({
-              where: {
-                campaignId,
-                status: "PENDING",
-              },
-            });
-
-            const finalCampaign = await prisma.campaign.findUnique({
-              where: { id: campaignId },
-              select: { status: true },
-            });
-
-            if (remainingPending === 0 && finalCampaign?.status === "RUNNING") {
-              await prisma.campaign.update({
-                where: { id: campaignId },
-                data: {
-                  status: "COMPLETED",
-                  completedAt: new Date(),
-                },
-              });
-
-              await prisma.campaignLog.create({
-                data: {
-                  campaignId,
-                  type: "INFO",
-                  message: "Campaign completed after resume",
-                },
-              });
-            }
-
-            return;
-          }
-
-          for (const audience of audiences) {
-            try {
-              console.log("Sending to:", audience.contact.phone);
-
-              await prisma.campaignAudience.update({
-                where: { id: audience.id },
-                data: {
-                  status: "SENT",
-                  sentAt: new Date(),
-                },
-              });
-            } catch (err) {
-              await prisma.campaignAudience.update({
-                where: { id: audience.id },
-                data: {
-                  status: "FAILED",
-                  errorMessage: err.message,
-                  failedAt: new Date(),
-                },
-              });
-            }
-          }
-
-          await new Promise((resolve) =>
-            setTimeout(resolve, delayInSeconds * 1000)
-          );
-        }
-      } catch (err) {
-        console.log("Background Resume Error:", err);
-
-        await prisma.campaign.update({
-          where: { id: campaignId },
-          data: {
-            status: "FAILED",
-          },
-        });
-
-        await prisma.campaignLog.create({
-          data: {
-            campaignId,
-            type: "ERROR",
-            message: err.message || "Campaign resume failed",
-          },
-        });
-      }
+    emitToAccount(accountId, "campaign:status", {
+      campaignId,
+      status: "RUNNING",
+      pendingCount,
+      totalBatches,
     });
 
     return res.status(RESPONSE_CODES.POST).json({
@@ -190,6 +125,7 @@ router.post("/", async (req, res) => {
       statusCode: RESPONSE_CODES.POST,
       data: {
         pendingCount,
+        totalBatches,
       },
     });
   } catch (error) {

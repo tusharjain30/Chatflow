@@ -8,22 +8,52 @@ router.get("/", async (req, res) => {
   try {
     const { accountId } = req.auth;
 
-    const subscription = await prisma.subscription.findFirst({
-      where: {
-        accountId,
-        isActive: true,
-      },
-      orderBy: { startDate: "desc" },
-      include: {
-        plan: true,
-      },
-    });
+    const [subscription, account] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: {
+          accountId,
+          isActive: true,
+        },
+        orderBy: { startDate: "desc" },
+        include: {
+          plan: true,
+        },
+      }),
+      prisma.customerAccount.findUnique({
+        where: { id: accountId },
+        select: {
+          companyName: true,
+          creditBalance: true,
+          lifecycleStatus: true,
+          trialEndsAt: true,
+        },
+      }),
+    ]);
+
+    const isTrial =
+      account?.lifecycleStatus === "TRIAL" ||
+      (!!account?.trialEndsAt &&
+        new Date(account.trialEndsAt).getTime() > Date.now() &&
+        !subscription);
 
     return res.status(RESPONSE_CODES.GET).json({
       status: 1,
       message: "Subscription fetched successfully",
       statusCode: RESPONSE_CODES.GET,
-      data: subscription || null,
+      data: {
+        ...(subscription || {}),
+        plan: subscription?.plan || null,
+        isActive: subscription?.isActive || false,
+        startDate: subscription?.startDate || null,
+        endDate: subscription?.endDate || null,
+        account: {
+          companyName: account?.companyName || null,
+          creditBalance: account?.creditBalance || 0,
+          lifecycleStatus: account?.lifecycleStatus || null,
+          trialEndsAt: account?.trialEndsAt || null,
+          isTrial,
+        },
+      },
     });
   } catch (error) {
     console.log("Subscription Detail Error:", error);

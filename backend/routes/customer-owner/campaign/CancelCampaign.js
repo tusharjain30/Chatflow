@@ -5,6 +5,8 @@ const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
 const RESPONSE_CODES = require("../../../config/responseCode");
+const { removeCampaignQueueJobs } = require("../../../queue");
+const { emitToAccount } = require("../../../socket");
 
 router.post("/", async (req, res) => {
   try {
@@ -52,14 +54,25 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Update Campaign
-    // =========================
+    await removeCampaignQueueJobs(campaignId);
+
     await prisma.$transaction(async (tx) => {
       await tx.campaign.update({
         where: { id: campaignId },
         data: {
           status: "CANCELLED",
+        },
+      });
+
+      await tx.campaignJob.updateMany({
+        where: {
+          campaignId,
+          status: { in: ["PENDING", "PROCESSING"] },
+        },
+        data: {
+          status: "FAILED",
+          errorMessage: "Cancelled by user",
+          completedAt: new Date(),
         },
       });
 
@@ -70,6 +83,11 @@ router.post("/", async (req, res) => {
           message: "Campaign cancelled by user",
         },
       });
+    });
+
+    emitToAccount(accountId, "campaign:status", {
+      campaignId,
+      status: "CANCELLED",
     });
 
     return res.status(RESPONSE_CODES.POST).json({

@@ -1,612 +1,54 @@
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const { PrismaClient } = require("../generated/prisma/client");
+const {
+  OWNER,
+  SUPER_ADMIN,
+  INTERNAL_ADMIN_ROLE_NAME,
+  RESELLER,
+  PRIMARY_SUBSCRIPTION_START_DATE,
+  PRIMARY_PLAN_NAME,
+  PERMISSION_NAMES,
+  PLAN_DEFINITIONS,
+  CONTACT_GROUPS,
+  CUSTOM_FIELDS,
+  CONTACT_DEFINITIONS,
+  TEMPLATE_DEFINITIONS,
+  TEAM_INVITE_DEFINITIONS,
+  CUSTOMER_TEAM_MEMBERS,
+  RESELLER_TEAM_MEMBERS,
+  INTERNAL_ADMINS,
+  RESELLER_CUSTOMER_DEFINITIONS,
+  BOT_DEFINITIONS,
+  CAMPAIGN_DEFINITIONS,
+  BILLING_TRANSACTIONS,
+  WHATSAPP_ACCOUNT,
+  WABA_VERIFICATION,
+  WEBHOOK_EVENTS,
+  ACCESS_TOKEN_DEFINITIONS,
+  MESSAGE_LOG_DEFINITIONS,
+} = require("./seed/data");
+const {
+  buildTemplateComponents,
+  hashValue,
+  runOptionalSeed,
+  buildResellerTeamUserName,
+  metricsFromAudienceStatuses,
+} = require("./seed/helpers");
 
 const prisma = new PrismaClient();
 
-const OWNER_ROLE_NAME = "CUSTOMER_OWNER";
-const OWNER_EMAIL = "owner@chatflow-demo.com";
-const OWNER_PHONE = "919876543210";
-const OWNER_USERNAME = "chatflow_owner_demo";
-const OWNER_PASSWORD = "Owner@123";
-const COMPANY_NAME = "ChatFlow Demo Ventures";
-const SUPER_ADMIN_ROLE_NAME = "SUPER_ADMIN";
-const SUPER_ADMIN_EMAIL = "superadmin@chatflow-demo.com";
-const SUPER_ADMIN_PHONE = "919811110000";
-const SUPER_ADMIN_USERNAME = "chatflow_super_admin";
-const SUPER_ADMIN_PASSWORD = "SuperAdmin@123";
-const INTERNAL_ADMIN_ROLE_NAME = "OPERATIONS_MANAGER";
-const RESELLER_COMPANY_NAME = "ChatFlow Partner Network";
-const RESELLER_EMAIL = "reseller@chatflow-demo.com";
-const RESELLER_PHONE = "919899887766";
-const RESELLER_USERNAME = "chatflow_reseller_demo";
-const RESELLER_PASSWORD = "Reseller@123";
-const PERMISSION_NAMES = [
-  "VIEW_CUSTOMERS",
-  "VIEW_CUSTOMER",
-  "UPDATE_CUSTOMER",
-  "UPDATE_CUSTOMER_STATUS",
-  "VERIFY_CUSTOMER",
-  "DELETE_CUSTOMER",
-  "VIEW_CUSTOMER_STATS",
-  "FORCE_LOGOUT_CUSTOMER",
-];
-const PLAN_DEFINITIONS = [
-  {
-    name: "Starter",
-    description: "Best for new businesses starting WhatsApp engagement.",
-    price: 1499,
-    currency: "INR",
-    maxTemplates: 10,
-    maxBots: 2,
-    monthlyMessageLimit: 5000,
-  },
-  {
-    name: "Growth",
-    description:
-      "Balanced plan for scaling customer conversations and broadcasts.",
-    price: 3499,
-    currency: "INR",
-    maxTemplates: 40,
-    maxBots: 8,
-    monthlyMessageLimit: 20000,
-  },
-  {
-    name: "Scale",
-    description:
-      "For mature teams managing high-volume campaigns and automation.",
-    price: 6999,
-    currency: "INR",
-    maxTemplates: 100,
-    maxBots: 20,
-    monthlyMessageLimit: 75000,
-  },
-];
-
-const CONTACT_GROUPS = [
-  {
-    title: "Hot Leads",
-    description: "High-intent prospects ready for follow-up campaigns.",
-  },
-  {
-    title: "Existing Customers",
-    description: "Customers with successful onboarding and active engagement.",
-  },
-  {
-    title: "Re-engagement",
-    description: "Contacts who need follow-up after a period of inactivity.",
-  },
-];
-
-const CUSTOM_FIELDS = [
-  { name: "Lead Source", key: "lead_source", type: "text" },
-  { name: "Customer Type", key: "customer_type", type: "text" },
-  { name: "Budget", key: "budget", type: "number" },
-  { name: "Last Follow Up", key: "last_follow_up", type: "date" },
-];
-
-const TEMPLATE_DEFINITIONS = [
-  {
-    name: "welcome_offer_template",
-    category: "MARKETING",
-    language: "en_US",
-    status: "APPROVED",
-    body: "Hi {{1}}, welcome to ChatFlow Demo Ventures. Your dedicated advisor is ready to help you with the next best offer.",
-    header: {
-      type: "TEXT",
-      text: "Exclusive offer for {{1}}",
-    },
-    footer: {
-      text: "Reply STOP to opt out.",
-    },
-    buttons: [
-      {
-        type: "QUICK_REPLY",
-        text: "Talk to advisor",
-      },
-      {
-        type: "URL",
-        text: "View plans",
-        url: "https://example.com/plans",
-      },
-    ],
-    variableSamples: {
-      "{{1}}": "Rahul",
-    },
-  },
-  {
-    name: "payment_reminder_template",
-    category: "UTILITY",
-    language: "en_US",
-    status: "APPROVED",
-    body: "Hello {{1}}, your pending balance is Rs {{2}}. Please clear it before {{3}} to avoid service interruption.",
-    header: {
-      type: "TEXT",
-      text: "Payment reminder",
-    },
-    footer: {
-      text: "Need help? Reply on WhatsApp.",
-    },
-    buttons: [
-      {
-        type: "URL",
-        text: "Pay now",
-        url: "https://example.com/pay",
-      },
-    ],
-    variableSamples: {
-      "{{1}}": "Priya",
-      "{{2}}": "12500",
-      "{{3}}": "15 April 2026",
-    },
-  },
-  {
-    name: "verification_code_template",
-    category: "AUTHENTICATION",
-    language: "en_US",
-    status: "DRAFT",
-    body: "Your verification code is {{1}}. Do not share this code with anyone.",
-    header: null,
-    footer: {
-      text: "Code valid for 10 minutes.",
-    },
-    buttons: null,
-    variableSamples: {
-      "{{1}}": "482931",
-    },
-  },
-];
-
-const CONTACT_DEFINITIONS = [
-  {
-    phone: "919810000001",
-    firstName: "Rahul",
-    lastName: "Sharma",
-    country: "India",
-    languageCode: "en",
-    email: "rahul.sharma@example.com",
-    isOptedOut: false,
-    groups: ["Hot Leads"],
-    customFields: {
-      lead_source: "Website Form",
-      customer_type: "Prospect",
-      budget: "150000",
-      last_follow_up: "2026-03-28",
-    },
-  },
-  {
-    phone: "919810000002",
-    firstName: "Priya",
-    lastName: "Mehta",
-    country: "India",
-    languageCode: "en",
-    email: "priya.mehta@example.com",
-    isOptedOut: false,
-    groups: ["Existing Customers"],
-    customFields: {
-      lead_source: "Referral",
-      customer_type: "Customer",
-      budget: "85000",
-      last_follow_up: "2026-03-30",
-    },
-  },
-  {
-    phone: "919810000003",
-    firstName: "Aman",
-    lastName: "Khan",
-    country: "India",
-    languageCode: "hi",
-    email: "aman.khan@example.com",
-    isOptedOut: false,
-    groups: ["Re-engagement"],
-    customFields: {
-      lead_source: "Instagram",
-      customer_type: "Dormant",
-      budget: "60000",
-      last_follow_up: "2026-03-10",
-    },
-  },
-  {
-    phone: "919810000004",
-    firstName: "Sneha",
-    lastName: "Patel",
-    country: "India",
-    languageCode: "en",
-    email: "sneha.patel@example.com",
-    isOptedOut: false,
-    groups: ["Hot Leads", "Existing Customers"],
-    customFields: {
-      lead_source: "Sales Call",
-      customer_type: "Upsell",
-      budget: "225000",
-      last_follow_up: "2026-04-01",
-    },
-  },
-  {
-    phone: "919810000005",
-    firstName: "Vikram",
-    lastName: "Joshi",
-    country: "India",
-    languageCode: "hi",
-    email: "vikram.joshi@example.com",
-    isOptedOut: true,
-    groups: ["Re-engagement"],
-    customFields: {
-      lead_source: "Old Database",
-      customer_type: "Opted Out",
-      budget: "40000",
-      last_follow_up: "2026-02-14",
-    },
-  },
-];
-const RESELLER_CUSTOMER_DEFINITIONS = [
-  {
-    companyName: "Northstar Realty",
-    ownerFirstName: "Arjun",
-    ownerLastName: "Malhotra",
-    ownerEmail: "arjun@northstar-demo.com",
-    ownerPhone: "919700000111",
-    userName: "northstar_owner_demo",
-    password: "Owner@123",
-    planName: "Starter",
-    startDate: new Date("2026-02-01T00:00:00.000Z"),
-    isActive: true,
-  },
-  {
-    companyName: "BluePeak D2C",
-    ownerFirstName: "Neha",
-    ownerLastName: "Sethi",
-    ownerEmail: "neha@bluepeak-demo.com",
-    ownerPhone: "919700000222",
-    userName: "bluepeak_owner_demo",
-    password: "Owner@123",
-    planName: "Growth",
-    startDate: new Date("2026-03-01T00:00:00.000Z"),
-    isActive: true,
-  },
-  {
-    companyName: "PrimeCare Clinics",
-    ownerFirstName: "Karan",
-    ownerLastName: "Bedi",
-    ownerEmail: "karan@primecare-demo.com",
-    ownerPhone: "919700000333",
-    userName: "primecare_owner_demo",
-    password: "Owner@123",
-    planName: "Scale",
-    startDate: new Date("2026-04-01T00:00:00.000Z"),
-    isActive: false,
-  },
-];
-
-const TEAM_INVITE_DEFINITIONS = [
-  {
-    email: "team-admin@chatflow-demo.com",
-    roleType: "CUSTOMER_ADMIN",
-    expiresInHours: 48,
-  },
-  {
-    email: "team-agent@chatflow-demo.com",
-    roleType: "CUSTOMER_AGENT",
-    expiresInHours: 48,
-  },
-];
-
-const CUSTOMER_TEAM_MEMBERS = [
-  {
-    phone: "919810000006",
-    firstName: "Anita",
-    lastName: "Desai",
-    email: "anita.desai@chatflow-demo.com",
-    userName: "anita_admin_demo",
-    password: "Team@123",
-    roleType: "CUSTOMER_ADMIN",
-    isActive: true,
-  },
-  {
-    phone: "919810000007",
-    firstName: "Rohit",
-    lastName: "Verma",
-    email: "rohit.verma@chatflow-demo.com",
-    userName: "rohit_agent_demo",
-    password: "Team@123",
-    roleType: "CUSTOMER_AGENT",
-    isActive: true,
-  },
-];
-
-const RESELLER_TEAM_MEMBERS = [
-  {
-    firstName: "Nikhil",
-    lastName: "Raj",
-    email: "nikhil.raj@chatflow-demo.com",
-    phone: "919899887700",
-    password: "Team@123",
-    roleType: "RESELLER_SUPPORT",
-  },
-  {
-    firstName: "Meera",
-    lastName: "Shah",
-    email: "meera.shah@chatflow-demo.com",
-    phone: "919899887701",
-    password: "Team@123",
-    roleType: "RESELLER_SUB_ADMIN",
-  },
-];
-
-const INTERNAL_ADMINS = [
-  {
-    firstName: "Asha",
-    lastName: "Menon",
-    email: "ops.admin@chatflow-demo.com",
-    phone: "919811110001",
-    userName: "chatflow_ops_admin",
-    password: "Admin@123",
-  },
-];
-
-const BOT_DEFINITIONS = [
-  {
-    name: "welcome_keyword_bot",
-    botType: "SIMPLE",
-    triggerType: "KEYWORD",
-    triggerValue: "hi",
-    entryNodeKey: "welcome_start",
-    flow: {
-      version: 1,
-      nodes: [
-        { key: "welcome_start", label: "Welcome", type: "message" },
-        { key: "offer_buttons", label: "Offer Buttons", type: "interactive" },
-      ],
-      edges: [{ from: "welcome_start", to: "offer_buttons" }],
-    },
-    templates: ["welcome_offer_template"],
-    replies: [
-      {
-        name: "Welcome Text",
-        nodeKey: "welcome_start",
-        isStart: true,
-        replyType: "SIMPLE",
-        triggerType: "KEYWORD",
-        triggerValue: "hi",
-        bodyText:
-          "Hi {{name}}, welcome to ChatFlow Demo Ventures. Reply below to continue.",
-        footerText: "Seeded simple bot reply",
-        nextNodeKey: "offer_buttons",
-      },
-      {
-        name: "Offer Buttons",
-        nodeKey: "offer_buttons",
-        replyType: "INTERACTIVE",
-        triggerType: "BUTTON",
-        parentNodeKey: "welcome_start",
-        interactiveType: "REPLY_BUTTONS",
-        bodyText: "Choose what you want to do next.",
-        buttons: [
-          { label: "View Plans", payload: "VIEW_PLANS", order: 1 },
-          { label: "Talk to Sales", payload: "TALK_SALES", order: 2 },
-        ],
-        isEnd: true,
-      },
-    ],
-    flowVersion: 1,
-    sessionContact: "919810000001",
-    currentNodeKey: "offer_buttons",
-    previousNodeKey: "welcome_start",
-    state: { name: "Rahul", lastAction: "VIEW_PLANS" },
-  },
-  {
-    name: "document_support_bot",
-    botType: "FLOW",
-    triggerType: "WELCOME",
-    triggerValue: null,
-    entryNodeKey: "share_brochure",
-    flow: {
-      version: 3,
-      nodes: [
-        { key: "share_brochure", label: "Share Brochure", type: "media" },
-        { key: "open_site", label: "Open Site", type: "cta" },
-        { key: "choose_department", label: "Department List", type: "list" },
-      ],
-      edges: [
-        { from: "share_brochure", to: "open_site" },
-        { from: "open_site", to: "choose_department" },
-      ],
-    },
-    templates: ["payment_reminder_template"],
-    replies: [
-      {
-        name: "Brochure Media",
-        nodeKey: "share_brochure",
-        isStart: true,
-        replyType: "MEDIA",
-        triggerType: "WELCOME",
-        bodyText: "Here is the latest product brochure.",
-        media: {
-          mediaType: "DOCUMENT",
-          fileUrl: "https://example.com/assets/chatflow-brochure.pdf",
-          mimeType: "application/pdf",
-        },
-        nextNodeKey: "open_site",
-      },
-      {
-        name: "Website CTA",
-        nodeKey: "open_site",
-        replyType: "INTERACTIVE",
-        triggerType: "DEFAULT",
-        parentNodeKey: "share_brochure",
-        interactiveType: "CTA_URL",
-        bodyText: "Open our catalog for the full breakdown.",
-        ctaButton: {
-          displayText: "Open Catalog",
-          url: "https://example.com/catalog",
-        },
-        nextNodeKey: "choose_department",
-      },
-      {
-        name: "Department List",
-        nodeKey: "choose_department",
-        replyType: "INTERACTIVE",
-        triggerType: "DEFAULT",
-        parentNodeKey: "open_site",
-        interactiveType: "LIST",
-        bodyText: "Choose a department and we will route you.",
-        listMessage: {
-          buttonLabel: "Choose Department",
-          sections: [
-            {
-              title: "Sales",
-              order: 1,
-              rows: [
-                {
-                  rowId: "sales_real_estate",
-                  title: "Real Estate",
-                  description: "Property buying and selling",
-                  order: 1,
-                },
-                {
-                  rowId: "sales_d2c",
-                  title: "D2C",
-                  description: "Commerce and catalog support",
-                  order: 2,
-                },
-              ],
-            },
-          ],
-        },
-        isEnd: true,
-      },
-    ],
-    flowVersion: 3,
-    sessionContact: "919810000002",
-    currentNodeKey: "choose_department",
-    previousNodeKey: "open_site",
-    state: { lastListSelection: "sales_d2c" },
-  },
-];
-
-function extractVariables(text = "") {
-  const regex = /\{\{\s*(\d+)\s*\}\}/g;
-  const variables = [];
-  let match;
-
-  while ((match = regex.exec(text)) !== null) {
-    variables.push(`{{${match[1]}}}`);
-  }
-
-  return variables.length ? variables : null;
-}
-
-function buildTemplateComponents({
-  body,
-  header,
-  footer,
-  buttons,
-  variableSamples = {},
-}) {
-  const components = [];
-  const bodyVariables = extractVariables(body);
-
-  if (header) {
-    if (header.type === "TEXT") {
-      const headerComponent = {
-        type: "HEADER",
-        format: "TEXT",
-        text: header.text,
-      };
-
-      const headerVariables = extractVariables(header.text || "");
-      if (headerVariables?.length) {
-        headerComponent.example = {
-          header_text: headerVariables.map(
-            (token) => variableSamples[token] || token,
-          ),
-        };
-      }
-
-      components.push(headerComponent);
-    } else if (["IMAGE", "VIDEO", "DOCUMENT"].includes(header.type)) {
-      components.push({
-        type: "HEADER",
-        format: header.type,
-        example: {
-          header_handle: [header.mediaHandle || "MEDIA_HANDLE_PENDING"],
-        },
-      });
-    } else if (header.type === "LOCATION") {
-      components.push({
-        type: "HEADER",
-        format: "LOCATION",
-      });
-    }
-  }
-
-  const bodyComponent = {
-    type: "BODY",
-    text: body,
-  };
-
-  if (bodyVariables?.length) {
-    bodyComponent.example = {
-      body_text: [
-        bodyVariables.map((token) => variableSamples[token] || token),
-      ],
-    };
-  }
-
-  components.push(bodyComponent);
-
-  if (footer?.text) {
-    components.push({
-      type: "FOOTER",
-      text: footer.text,
-    });
-  }
-
-  if (Array.isArray(buttons) && buttons.length) {
-    const mappedButtons = buttons
-      .map((button) => {
-        if (button.type === "URL") {
-          return { type: "URL", text: button.text, url: button.url };
-        }
-
-        if (button.type === "QUICK_REPLY") {
-          return { type: "QUICK_REPLY", text: button.text };
-        }
-
-        if (button.type === "CALL") {
-          return {
-            type: "PHONE_NUMBER",
-            text: button.text,
-            phone_number: button.phoneNumber,
-          };
-        }
-
-        return null;
-      })
-      .filter(Boolean);
-
-    if (mappedButtons.length) {
-      components.push({
-        type: "BUTTONS",
-        buttons: mappedButtons,
-      });
-    }
-  }
-
-  return components;
-}
-
 async function ensureOwnerRole() {
   return prisma.role.upsert({
-    where: { name: OWNER_ROLE_NAME },
+    where: { name: OWNER.roleName },
     update: {
       roleType: "CUSTOMER_OWNER",
       isActive: true,
       isDeleted: false,
     },
     create: {
-      name: OWNER_ROLE_NAME,
+      name: OWNER.roleName,
       roleType: "CUSTOMER_OWNER",
       isActive: true,
       isDeleted: false,
@@ -615,14 +57,14 @@ async function ensureOwnerRole() {
 }
 
 async function ensureOwnerAccount(roleId) {
-  const hashedPassword = await bcrypt.hash(OWNER_PASSWORD, 10);
+  const hashedPassword = await bcrypt.hash(OWNER.password, 10);
 
   const existingOwner = await prisma.user.findFirst({
     where: {
       OR: [
-        { email: OWNER_EMAIL },
-        { phone: OWNER_PHONE },
-        { userName: OWNER_USERNAME },
+        { email: OWNER.email },
+        { phone: OWNER.phone },
+        { userName: OWNER.userName },
       ],
     },
     include: {
@@ -634,11 +76,11 @@ async function ensureOwnerAccount(roleId) {
     const owner = await prisma.user.update({
       where: { id: existingOwner.id },
       data: {
-        firstName: "Demo",
-        lastName: "Owner",
-        email: OWNER_EMAIL,
-        phone: OWNER_PHONE,
-        userName: OWNER_USERNAME,
+        firstName: OWNER.firstName,
+        lastName: OWNER.lastName,
+        email: OWNER.email,
+        phone: OWNER.phone,
+        userName: OWNER.userName,
         password: hashedPassword,
         roleId,
         isActive: true,
@@ -651,7 +93,7 @@ async function ensureOwnerAccount(roleId) {
     const account = await prisma.customerAccount.update({
       where: { id: existingOwner.accountId },
       data: {
-        companyName: COMPANY_NAME,
+        companyName: OWNER.companyName,
         isActive: true,
         isDeleted: false,
       },
@@ -663,7 +105,7 @@ async function ensureOwnerAccount(roleId) {
   return prisma.$transaction(async (tx) => {
     const account = await tx.customerAccount.create({
       data: {
-        companyName: COMPANY_NAME,
+        companyName: OWNER.companyName,
         isActive: true,
         isDeleted: false,
       },
@@ -671,11 +113,11 @@ async function ensureOwnerAccount(roleId) {
 
     const owner = await tx.user.create({
       data: {
-        firstName: "Demo",
-        lastName: "Owner",
-        email: OWNER_EMAIL,
-        phone: OWNER_PHONE,
-        userName: OWNER_USERNAME,
+        firstName: OWNER.firstName,
+        lastName: OWNER.lastName,
+        email: OWNER.email,
+        phone: OWNER.phone,
+        userName: OWNER.userName,
         password: hashedPassword,
         roleId,
         accountId: account.id,
@@ -691,14 +133,14 @@ async function ensureOwnerAccount(roleId) {
 }
 
 async function ensureReseller() {
-  const hashedPassword = await bcrypt.hash(RESELLER_PASSWORD, 10);
+  const hashedPassword = await bcrypt.hash(RESELLER.password, 10);
 
   const existingReseller = await prisma.reseller.findFirst({
     where: {
       OR: [
-        { email: RESELLER_EMAIL },
-        { phone: RESELLER_PHONE },
-        { userName: RESELLER_USERNAME },
+        { email: RESELLER.email },
+        { phone: RESELLER.phone },
+        { userName: RESELLER.userName },
       ],
     },
   });
@@ -707,15 +149,15 @@ async function ensureReseller() {
     return prisma.reseller.update({
       where: { id: existingReseller.id },
       data: {
-        companyName: RESELLER_COMPANY_NAME,
-        firstName: "Demo",
-        lastName: "Reseller",
-        email: RESELLER_EMAIL,
-        phone: RESELLER_PHONE,
-        userName: RESELLER_USERNAME,
+        companyName: RESELLER.companyName,
+        firstName: RESELLER.firstName,
+        lastName: RESELLER.lastName,
+        email: RESELLER.email,
+        phone: RESELLER.phone,
+        userName: RESELLER.userName,
         password: hashedPassword,
-        commissionRate: 18,
-        balance: 42500,
+        commissionRate: RESELLER.commissionRate,
+        balance: RESELLER.balance,
         isActive: true,
         isDeleted: false,
         isVerified: true,
@@ -725,15 +167,15 @@ async function ensureReseller() {
 
   return prisma.reseller.create({
     data: {
-      companyName: RESELLER_COMPANY_NAME,
-      firstName: "Demo",
-      lastName: "Reseller",
-      email: RESELLER_EMAIL,
-      phone: RESELLER_PHONE,
-      userName: RESELLER_USERNAME,
+      companyName: RESELLER.companyName,
+      firstName: RESELLER.firstName,
+      lastName: RESELLER.lastName,
+      email: RESELLER.email,
+      phone: RESELLER.phone,
+      userName: RESELLER.userName,
       password: hashedPassword,
-      commissionRate: 18,
-      balance: 42500,
+      commissionRate: RESELLER.commissionRate,
+      balance: RESELLER.balance,
       isActive: true,
       isDeleted: false,
       isVerified: true,
@@ -923,7 +365,7 @@ async function ensureRole(name, roleType) {
   });
 }
 
-async function seedCustomerTeamMembers(accountId, ownerId) {
+async function seedCustomerTeamMembers(accountId) {
   for (const memberDef of CUSTOMER_TEAM_MEMBERS) {
     const role = await ensureRole(memberDef.roleType, memberDef.roleType);
     const normalizedEmail = memberDef.email.trim().toLowerCase();
@@ -1018,14 +460,6 @@ async function seedTeamInvites(accountId, createdByUserId) {
       });
     }
   }
-}
-
-function buildResellerTeamUserName(email) {
-  return `${email
-    .split("@")[0]
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "")
-    .slice(0, 12)}${Date.now().toString().slice(-4)}`;
 }
 
 async function seedResellerTeamMembers(resellerId) {
@@ -1319,12 +753,6 @@ async function seedCampaigns(
   contacts,
   groupsByTitle,
 ) {
-  const welcomeTemplate = templatesByName.get("welcome_offer_template");
-  const reminderTemplate = templatesByName.get("payment_reminder_template");
-  const hotLeadsGroup = groupsByTitle.get("Hot Leads");
-  const reEngagementGroup = groupsByTitle.get("Re-engagement");
-  const existingCustomersGroup = groupsByTitle.get("Existing Customers");
-
   const contactsByPhone = new Map(
     contacts.map((contact) => [contact.phone, contact]),
   );
@@ -1332,152 +760,16 @@ async function seedCampaigns(
   const getContactIds = (phones = []) =>
     phones.map((phone) => contactsByPhone.get(phone)?.id).filter(Boolean);
 
-  const metricsFromAudienceStatuses = (audienceStatuses = []) => ({
-    totalContacts: audienceStatuses.length,
-    sentCount: audienceStatuses.filter((status) =>
-      ["SENT", "DELIVERED", "READ", "FAILED"].includes(status),
-    ).length,
-    deliveredCount: audienceStatuses.filter((status) =>
-      ["DELIVERED", "READ"].includes(status),
-    ).length,
-    readCount: audienceStatuses.filter((status) => status === "READ").length,
-    failedCount: audienceStatuses.filter((status) => status === "FAILED")
-      .length,
-  });
-
-  const campaignDefinitions = [
-    {
-      name: "April Welcome Draft",
-      description: "Draft welcome campaign ready for audience curation.",
-      templateId: welcomeTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: null,
-      completedAt: null,
-      batchSize: 25,
-      delayInSeconds: 3,
-      status: "DRAFT",
-      logMessage: "Draft campaign created from seed data",
-      audienceContactIds: getContactIds([
-        "919810000001",
-        "919810000004",
-        "919810000005",
-      ]),
-      audienceStatuses: ["PENDING", "PENDING", "PENDING"],
-    },
-    {
-      name: "Payment Reminder Scheduled",
-      description: "Scheduled reminders for customers with pending dues.",
-      templateId: reminderTemplate?.id,
-      isScheduled: true,
-      scheduledAt: new Date("2026-04-10T10:00:00.000Z"),
-      startedAt: null,
-      completedAt: null,
-      batchSize: 20,
-      delayInSeconds: 5,
-      status: "SCHEDULED",
-      logMessage: "Scheduled campaign created from seed data",
-      audienceGroupId: reEngagementGroup?.id || hotLeadsGroup?.id || null,
-      audienceStatuses: ["PENDING", "PENDING"],
-    },
-    {
-      name: "Hot Leads Live Run",
-      description: "Active campaign currently processing hot leads.",
-      templateId: welcomeTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: new Date("2026-04-04T09:00:00.000Z"),
-      completedAt: null,
-      batchSize: 15,
-      delayInSeconds: 2,
-      status: "RUNNING",
-      logMessage: "Running campaign created from seed data",
-      audienceContactIds: getContactIds([
-        "919810000001",
-        "919810000002",
-        "919810000003",
-        "919810000004",
-        "919810000005",
-      ]),
-      audienceStatuses: ["READ", "DELIVERED", "SENT", "FAILED", "PENDING"],
-    },
-    {
-      name: "Existing Customers Paused",
-      description: "Paused campaign with pending audience left to resume.",
-      templateId: reminderTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: new Date("2026-04-03T07:30:00.000Z"),
-      completedAt: null,
-      batchSize: 10,
-      delayInSeconds: 4,
-      status: "PAUSED",
-      logMessage: "Paused campaign created from seed data",
-      audienceGroupId: existingCustomersGroup?.id || hotLeadsGroup?.id || null,
-      audienceStatuses: ["READ", "DELIVERED", "PENDING"],
-    },
-    {
-      name: "March Closure Broadcast",
-      description: "Completed campaign sent to all selected contacts.",
-      templateId: welcomeTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: new Date("2026-03-28T06:30:00.000Z"),
-      completedAt: new Date("2026-03-28T08:00:00.000Z"),
-      batchSize: 30,
-      delayInSeconds: 2,
-      status: "COMPLETED",
-      logMessage: "Completed campaign created from seed data",
-      audienceContactIds: getContactIds([
-        "919810000001",
-        "919810000002",
-        "919810000003",
-        "919810000004",
-      ]),
-      audienceStatuses: ["READ", "READ", "DELIVERED", "FAILED"],
-    },
-    {
-      name: "Dormant User Recovery Failed",
-      description:
-        "Campaign failed after delivery issues during recovery attempts.",
-      templateId: reminderTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: new Date("2026-03-25T05:00:00.000Z"),
-      completedAt: new Date("2026-03-25T05:45:00.000Z"),
-      batchSize: 12,
-      delayInSeconds: 6,
-      status: "FAILED",
-      logMessage: "Failed campaign created from seed data",
-      audienceContactIds: getContactIds(["919810000003", "919810000005"]),
-      audienceStatuses: ["FAILED", "FAILED"],
-    },
-    {
-      name: "Cancelled Follow-up Blast",
-      description:
-        "Campaign cancelled before all queued audience could be reached.",
-      templateId: welcomeTemplate?.id,
-      isScheduled: false,
-      scheduledAt: null,
-      startedAt: new Date("2026-04-02T08:15:00.000Z"),
-      completedAt: null,
-      batchSize: 10,
-      delayInSeconds: 3,
-      status: "CANCELLED",
-      logMessage: "Cancelled campaign created from seed data",
-      audienceContactIds: getContactIds([
-        "919810000001",
-        "919810000002",
-        "919810000004",
-      ]),
-      audienceStatuses: ["READ", "SENT", "PENDING"],
-    },
-  ];
-
-  for (const campaignDef of campaignDefinitions) {
-    if (!campaignDef.templateId) {
+  for (const campaignDef of CAMPAIGN_DEFINITIONS) {
+    const template = templatesByName.get(campaignDef.templateName);
+    if (!template?.id) {
       continue;
     }
+
+    const audienceGroup = campaignDef.audienceGroupTitle
+      ? groupsByTitle.get(campaignDef.audienceGroupTitle) ||
+        groupsByTitle.get("Hot Leads")
+      : null;
 
     const existing = await prisma.campaign.findFirst({
       where: {
@@ -1496,7 +788,7 @@ async function seedCampaigns(
           where: { id: existing.id },
           data: {
             description: campaignDef.description,
-            templateId: campaignDef.templateId,
+            templateId: template.id,
             isScheduled: campaignDef.isScheduled,
             scheduledAt: campaignDef.scheduledAt,
             startedAt: campaignDef.startedAt,
@@ -1518,7 +810,7 @@ async function seedCampaigns(
             accountId,
             name: campaignDef.name,
             description: campaignDef.description,
-            templateId: campaignDef.templateId,
+            templateId: template.id,
             isScheduled: campaignDef.isScheduled,
             scheduledAt: campaignDef.scheduledAt,
             startedAt: campaignDef.startedAt,
@@ -1542,13 +834,13 @@ async function seedCampaigns(
       },
     });
 
-    let audienceContactIds = campaignDef.audienceContactIds || [];
+    let audienceContactIds = getContactIds(campaignDef.audiencePhones || []);
 
-    if (!audienceContactIds.length && campaignDef.audienceGroupId) {
+    if (!audienceContactIds.length && audienceGroup?.id) {
       const mappings = await prisma.contactGroupMap.findMany({
         where: {
           accountId,
-          groupId: campaignDef.audienceGroupId,
+          groupId: audienceGroup.id,
         },
         select: {
           contactId: true,
@@ -1619,38 +911,6 @@ async function seedCampaigns(
         },
       ],
     });
-  }
-}
-
-function hashValue(value) {
-  return crypto.createHash("sha256").update(value).digest("hex");
-}
-
-function isMissingTableError(error, modelNames) {
-  if (error?.code !== "P2021") {
-    return false;
-  }
-
-  const names = Array.isArray(modelNames) ? modelNames : [modelNames];
-  return names.includes(error?.meta?.modelName);
-}
-
-async function runOptionalSeed(
-  label,
-  modelNames,
-  callback,
-  fallbackValue = null,
-) {
-  try {
-    return await callback();
-  } catch (error) {
-    if (isMissingTableError(error, modelNames)) {
-      const missingModel = error?.meta?.modelName || "unknown model";
-      console.warn(`Skipping ${label}: ${missingModel} table not found.`);
-      return fallbackValue;
-    }
-
-    throw error;
   }
 }
 
@@ -1747,10 +1007,7 @@ async function upsertAdminAccount(adminDef, roleId) {
 
 async function seedAdminModules() {
   const permissions = await seedPermissions();
-  const superAdminRole = await ensureRole(
-    SUPER_ADMIN_ROLE_NAME,
-    "SYSTEM_ADMIN",
-  );
+  const superAdminRole = await ensureRole(SUPER_ADMIN.roleName, "SYSTEM_ADMIN");
   const internalAdminRole = await ensureRole(
     INTERNAL_ADMIN_ROLE_NAME,
     "INTERNAL_ADMIN",
@@ -1761,12 +1018,12 @@ async function seedAdminModules() {
 
   const superAdmin = await upsertAdminAccount(
     {
-      firstName: "Super",
-      lastName: "Admin",
-      email: SUPER_ADMIN_EMAIL,
-      phone: SUPER_ADMIN_PHONE,
-      userName: SUPER_ADMIN_USERNAME,
-      password: SUPER_ADMIN_PASSWORD,
+      firstName: SUPER_ADMIN.firstName,
+      lastName: SUPER_ADMIN.lastName,
+      email: SUPER_ADMIN.email,
+      phone: SUPER_ADMIN.phone,
+      userName: SUPER_ADMIN.userName,
+      password: SUPER_ADMIN.password,
     },
     superAdminRole.id,
   );
@@ -1786,24 +1043,7 @@ async function seedAdminModules() {
 }
 
 async function seedBillingTransactions(resellerId, accountId) {
-  const transactions = [
-    {
-      reference: "SEED-RECHARGE-001",
-      type: "RECHARGE",
-      amount: 15000,
-      description: "Seeded opening recharge for primary demo account",
-      accountId,
-    },
-    {
-      reference: "SEED-COMMISSION-001",
-      type: "COMMISSION",
-      amount: 3200,
-      description: "Seeded commission payout for April 2026",
-      accountId,
-    },
-  ];
-
-  for (const transaction of transactions) {
+  for (const transaction of BILLING_TRANSACTIONS) {
     const existing = await prisma.billingTransaction.findFirst({
       where: {
         resellerId,
@@ -1815,7 +1055,7 @@ async function seedBillingTransactions(resellerId, accountId) {
       await prisma.billingTransaction.update({
         where: { id: existing.id },
         data: {
-          accountId: transaction.accountId,
+          accountId,
           type: transaction.type,
           amount: transaction.amount,
           currency: "INR",
@@ -1826,7 +1066,7 @@ async function seedBillingTransactions(resellerId, accountId) {
       await prisma.billingTransaction.create({
         data: {
           resellerId,
-          accountId: transaction.accountId,
+          accountId,
           type: transaction.type,
           amount: transaction.amount,
           currency: "INR",
@@ -1841,97 +1081,61 @@ async function seedBillingTransactions(resellerId, accountId) {
 async function seedWhatsAppSetup(accountId, ownerId) {
   const whatsAppAccount = await prisma.whatsAppAccount.upsert({
     where: {
-      id: "seed-whatsapp-account-primary",
+      id: WHATSAPP_ACCOUNT.id,
     },
     update: {
       accountId,
-      phoneNumber: OWNER_PHONE,
-      phoneNumberId: "phone_number_id_seed_primary",
-      wabaId: "waba_id_seed_primary",
-      businessId: "meta_business_seed_primary",
-      accessToken: "meta_access_token_seed_primary",
-      webhookVerifyToken: "meta_webhook_verify_seed_primary",
-      displayName: COMPANY_NAME,
-      isActive: true,
-      status: "ACTIVE",
-      tokenExpiresAt: new Date("2026-12-31T00:00:00.000Z"),
-      metaBusinessName: COMPANY_NAME,
+      phoneNumber: OWNER.phone,
+      phoneNumberId: WHATSAPP_ACCOUNT.phoneNumberId,
+      wabaId: WHATSAPP_ACCOUNT.wabaId,
+      businessId: WHATSAPP_ACCOUNT.businessId,
+      accessToken: WHATSAPP_ACCOUNT.accessToken,
+      webhookVerifyToken: WHATSAPP_ACCOUNT.webhookVerifyToken,
+      displayName: OWNER.companyName,
+      isActive: WHATSAPP_ACCOUNT.isActive,
+      status: WHATSAPP_ACCOUNT.status,
+      tokenExpiresAt: WHATSAPP_ACCOUNT.tokenExpiresAt,
+      metaBusinessName: OWNER.companyName,
     },
     create: {
-      id: "seed-whatsapp-account-primary",
+      id: WHATSAPP_ACCOUNT.id,
       accountId,
-      phoneNumber: OWNER_PHONE,
-      phoneNumberId: "phone_number_id_seed_primary",
-      wabaId: "waba_id_seed_primary",
-      businessId: "meta_business_seed_primary",
-      accessToken: "meta_access_token_seed_primary",
-      webhookVerifyToken: "meta_webhook_verify_seed_primary",
-      displayName: COMPANY_NAME,
-      isActive: true,
-      status: "ACTIVE",
-      tokenExpiresAt: new Date("2026-12-31T00:00:00.000Z"),
-      metaBusinessName: COMPANY_NAME,
+      phoneNumber: OWNER.phone,
+      phoneNumberId: WHATSAPP_ACCOUNT.phoneNumberId,
+      wabaId: WHATSAPP_ACCOUNT.wabaId,
+      businessId: WHATSAPP_ACCOUNT.businessId,
+      accessToken: WHATSAPP_ACCOUNT.accessToken,
+      webhookVerifyToken: WHATSAPP_ACCOUNT.webhookVerifyToken,
+      displayName: OWNER.companyName,
+      isActive: WHATSAPP_ACCOUNT.isActive,
+      status: WHATSAPP_ACCOUNT.status,
+      tokenExpiresAt: WHATSAPP_ACCOUNT.tokenExpiresAt,
+      metaBusinessName: OWNER.companyName,
     },
   });
 
   await prisma.wabaVerification.upsert({
     where: { userId: ownerId },
     update: {
-      clientPhone: OWNER_PHONE,
-      otp: "123456",
-      otpExpires: new Date("2026-12-31T00:10:00.000Z"),
-      status: "VERIFIED",
+      clientPhone: OWNER.phone,
+      otp: WABA_VERIFICATION.otp,
+      otpExpires: WABA_VERIFICATION.otpExpires,
+      status: WABA_VERIFICATION.status,
       wabaPhoneId: whatsAppAccount.phoneNumberId,
       wabaWabaId: whatsAppAccount.wabaId,
     },
     create: {
       userId: ownerId,
-      clientPhone: OWNER_PHONE,
-      otp: "123456",
-      otpExpires: new Date("2026-12-31T00:10:00.000Z"),
-      status: "VERIFIED",
+      clientPhone: OWNER.phone,
+      otp: WABA_VERIFICATION.otp,
+      otpExpires: WABA_VERIFICATION.otpExpires,
+      status: WABA_VERIFICATION.status,
       wabaPhoneId: whatsAppAccount.phoneNumberId,
       wabaWabaId: whatsAppAccount.wabaId,
     },
   });
 
-  const webhookEvents = [
-    {
-      eventType: "messages.upsert",
-      payload: {
-        object: "whatsapp_business_account",
-        entry: [
-          { changes: [{ field: "messages", value: { status: "received" } }] },
-        ],
-      },
-      processed: true,
-      attempts: 1,
-      processedAt: new Date("2026-04-20T10:00:00.000Z"),
-      lastError: null,
-    },
-    {
-      eventType: "template.status",
-      payload: {
-        object: "whatsapp_business_account",
-        entry: [
-          {
-            changes: [
-              {
-                field: "message_template_status_update",
-                value: { status: "APPROVED" },
-              },
-            ],
-          },
-        ],
-      },
-      processed: false,
-      attempts: 2,
-      processedAt: null,
-      lastError: "Seeded retry pending",
-    },
-  ];
-
-  for (const eventDef of webhookEvents) {
+  for (const eventDef of WEBHOOK_EVENTS) {
     const existing = await prisma.webhookEvent.findFirst({
       where: {
         accountId,
@@ -1958,54 +1162,43 @@ async function seedWhatsAppSetup(accountId, ownerId) {
 }
 
 async function seedAccessTokens(ownerId, accountId) {
-  const teamAdmin = await prisma.user.findFirst({
-    where: {
-      accountId,
-      email: "anita.desai@chatflow-demo.com",
-    },
-  });
+  for (const tokenDef of ACCESS_TOKEN_DEFINITIONS) {
+    let userId = ownerId;
 
-  const tokenDefs = [
-    {
-      userId: ownerId,
-      service: "TEMPLATE",
-      tokenHash: hashValue("seed-template-token-owner"),
-      limitValue: 100,
-      usedValue: 12,
-    },
-    {
-      userId: ownerId,
-      service: "BOT",
-      tokenHash: hashValue("seed-bot-token-owner"),
-      limitValue: 25,
-      usedValue: 3,
-    },
-    {
-      userId: teamAdmin?.id || ownerId,
-      service: "MESSAGE",
-      tokenHash: hashValue("seed-message-token-admin"),
-      limitValue: 5000,
-      usedValue: 428,
-    },
-  ];
+    if (!tokenDef.useOwner && tokenDef.userEmail) {
+      const teamUser = await prisma.user.findFirst({
+        where: {
+          accountId,
+          email: tokenDef.userEmail,
+        },
+      });
+      userId = teamUser?.id || ownerId;
+    }
 
-  for (const tokenDef of tokenDefs) {
+    const payload = {
+      userId,
+      service: tokenDef.service,
+      tokenHash: hashValue(tokenDef.rawToken),
+      limitValue: tokenDef.limitValue,
+      usedValue: tokenDef.usedValue,
+    };
+
     const existing = await prisma.accessToken.findFirst({
       where: {
-        userId: tokenDef.userId,
-        service: tokenDef.service,
+        userId: payload.userId,
+        service: payload.service,
       },
     });
 
     if (existing) {
       await prisma.accessToken.update({
         where: { id: existing.id },
-        data: tokenDef,
+        data: payload,
       });
     } else {
       await prisma.accessToken.create({
         data: {
-          ...tokenDef,
+          ...payload,
           isActive: true,
         },
       });
@@ -2014,102 +1207,46 @@ async function seedAccessTokens(ownerId, accountId) {
 }
 
 async function seedMessageLogs(accountId, ownerId, templatesByName, contacts) {
-  const template = templatesByName.get("welcome_offer_template");
   const contactByPhone = new Map(
     contacts.map((contact) => [contact.phone, contact]),
   );
-  const messageDefs = [
-    {
-      metaMessageId: "wamid.seed.outbound.001",
-      to: "919810000001",
-      from: OWNER_PHONE,
-      type: "TEMPLATE",
-      direction: "OUTBOUND",
-      templateName: template?.name || "welcome_offer_template",
-      templateId: template?.id || null,
-      payload: {
-        to: "919810000001",
-        template: template?.name || "welcome_offer_template",
-        variables: ["Rahul"],
-      },
-      status: "DELIVERED",
-      conversationId: "seed-conversation-rahul",
-      messageText: "Welcome offer sent to Rahul",
-      price: 0.82,
-      currency: "INR",
-      createdAt: new Date("2026-04-18T09:30:00.000Z"),
-    },
-    {
-      metaMessageId: "wamid.seed.inbound.001",
-      to: OWNER_PHONE,
-      from: "919810000001",
-      type: "TEXT",
-      direction: "INBOUND",
-      templateName: null,
-      templateId: null,
-      payload: {
-        from: "919810000001",
-        text: "I want to talk to an advisor",
-      },
-      status: "READ",
-      conversationId: "seed-conversation-rahul",
-      messageText: "I want to talk to an advisor",
-      price: null,
-      currency: null,
-      createdAt: new Date("2026-04-18T09:32:00.000Z"),
-    },
-    {
-      metaMessageId: "wamid.seed.outbound.002",
-      to: "919810000002",
-      from: OWNER_PHONE,
-      type: "TEXT",
-      direction: "OUTBOUND",
-      templateName: null,
-      templateId: null,
-      payload: {
-        to: "919810000002",
-        text: "Your onboarding checklist is ready.",
-      },
-      status: "SENT",
-      conversationId: "seed-conversation-priya",
-      messageText: "Your onboarding checklist is ready.",
-      price: 0.21,
-      currency: "INR",
-      createdAt: new Date("2026-04-19T14:15:00.000Z"),
-    },
-  ];
 
   const logs = [];
-  for (const messageDef of messageDefs) {
+  for (const messageDef of MESSAGE_LOG_DEFINITIONS) {
+    const template = messageDef.templateName
+      ? templatesByName.get(messageDef.templateName)
+      : null;
+
     const existing = await prisma.messageLog.findUnique({
       where: {
         metaMessageId: messageDef.metaMessageId,
       },
     });
 
+    const to = messageDef.toOwner ? OWNER.phone : messageDef.to;
+    const from = messageDef.fromOwner ? OWNER.phone : messageDef.from;
+
     const logData = {
       accountId,
       sentByUserId: messageDef.direction === "OUTBOUND" ? ownerId : null,
-      to: messageDef.to,
-      from: messageDef.from,
+      to,
+      from,
       metaMessageId: messageDef.metaMessageId,
       type: messageDef.type,
       direction: messageDef.direction,
-      templateName: messageDef.templateName,
+      templateName: template?.name || messageDef.templateName,
       payload: {
         ...messageDef.payload,
         contactId:
           contactByPhone.get(
-            messageDef.direction === "INBOUND"
-              ? messageDef.from
-              : messageDef.to,
+            messageDef.direction === "INBOUND" ? from : to,
           )?.id || null,
       },
       status: messageDef.status,
       createdAt: messageDef.createdAt,
       conversationId: messageDef.conversationId,
       messageText: messageDef.messageText,
-      templateId: messageDef.templateId,
+      templateId: template?.id || null,
       mediaUrl: null,
       errorMessage: null,
       price: messageDef.price,
@@ -2530,6 +1667,73 @@ async function seedCampaignOperationalData(accountId, messageLogs) {
   }
 }
 
+async function seedSupportTickets(accountId, ownerId) {
+  const tickets = [
+    {
+      ref: "SUP-000001-260821",
+      subject: "Not Able To Send Messages",
+      description: "Unable to send outbound WhatsApp messages from inbox.",
+      category: "WHATSAPP_ISSUE",
+      priority: "CRITICAL",
+      status: "RESOLVED",
+      createdAt: new Date("2026-08-21T08:17:00.000Z"),
+      updatedAt: new Date("2026-08-21T08:27:38.000Z"),
+    },
+    {
+      ref: "SUP-000002-260820",
+      subject: "Template approval delay",
+      description: "Marketing template is stuck in pending for several days.",
+      category: "CAMPAIGNS",
+      priority: "NOT_SET",
+      status: "OPEN",
+      createdAt: new Date("2026-08-20T10:12:00.000Z"),
+      updatedAt: new Date("2026-08-20T10:12:00.000Z"),
+    },
+    {
+      ref: "SUP-000003-260819",
+      subject: "Billing invoice request",
+      description: "Please share last month invoice for company records.",
+      category: "BILLING",
+      priority: "MEDIUM",
+      status: "CLOSED",
+      createdAt: new Date("2026-08-19T14:05:00.000Z"),
+      updatedAt: new Date("2026-08-19T16:40:00.000Z"),
+    },
+  ];
+
+  for (const ticket of tickets) {
+    await prisma.supportTicket.upsert({
+      where: {
+        accountId_ref: {
+          accountId,
+          ref: ticket.ref,
+        },
+      },
+      update: {
+        subject: ticket.subject,
+        description: ticket.description,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        isDeleted: false,
+        updatedAt: ticket.updatedAt,
+      },
+      create: {
+        accountId,
+        createdByUserId: ownerId,
+        ref: ticket.ref,
+        subject: ticket.subject,
+        description: ticket.description,
+        category: ticket.category,
+        priority: ticket.priority,
+        status: ticket.status,
+        createdAt: ticket.createdAt,
+        updatedAt: ticket.updatedAt,
+      },
+    });
+  }
+}
+
 async function main() {
   const { superAdmin, internalAdmins, permissions } = await seedAdminModules();
   const reseller = await ensureReseller();
@@ -2544,17 +1748,17 @@ async function main() {
       isDeleted: false,
     },
   });
-  const growthPlan =
-    plansByName.get("Growth") || plansByName.values().next().value;
-  if (growthPlan) {
+  const primaryPlan =
+    plansByName.get(PRIMARY_PLAN_NAME) || plansByName.values().next().value;
+  if (primaryPlan) {
     await ensureAccountSubscription(
       account.id,
-      growthPlan.id,
-      new Date("2026-01-15T00:00:00.000Z"),
+      primaryPlan.id,
+      PRIMARY_SUBSCRIPTION_START_DATE,
     );
   }
   await seedResellerManagedCustomers(reseller.id, role.id, plansByName);
-  await seedCustomerTeamMembers(account.id, owner.id);
+  await seedCustomerTeamMembers(account.id);
   await seedTeamInvites(account.id, owner.id);
   await runOptionalSeed("reseller team seed", "ResellerMember", () =>
     seedResellerTeamMembers(reseller.id),
@@ -2617,26 +1821,29 @@ async function main() {
     ["CampaignJob", "CampaignMessage"],
     () => seedCampaignOperationalData(account.id, messageLogs),
   );
+  await runOptionalSeed("support ticket seed", "SupportTicket", () =>
+    seedSupportTickets(account.id, owner.id),
+  );
 
   console.log("Seed completed successfully.");
-  console.log(`Super admin email: ${SUPER_ADMIN_EMAIL}`);
-  console.log(`Super admin phone: ${SUPER_ADMIN_PHONE}`);
-  console.log(`Super admin password: ${SUPER_ADMIN_PASSWORD}`);
+  console.log(`Super admin email: ${SUPER_ADMIN.email}`);
+  console.log(`Super admin phone: ${SUPER_ADMIN.phone}`);
+  console.log(`Super admin password: ${SUPER_ADMIN.password}`);
   console.log(
     `Seeded permissions: ${permissions.map((item) => item.name).join(", ")}`,
   );
   console.log(
     `Internal admin emails: ${internalAdmins.map((item) => item.email).join(", ")}`,
   );
-  console.log(`Reseller email: ${RESELLER_EMAIL}`);
-  console.log(`Reseller phone: ${RESELLER_PHONE}`);
-  console.log(`Reseller password: ${RESELLER_PASSWORD}`);
-  console.log(`Reseller company: ${RESELLER_COMPANY_NAME}`);
+  console.log(`Reseller email: ${RESELLER.email}`);
+  console.log(`Reseller phone: ${RESELLER.phone}`);
+  console.log(`Reseller password: ${RESELLER.password}`);
+  console.log(`Reseller company: ${RESELLER.companyName}`);
   console.log(`Plans seeded: ${Array.from(plansByName.keys()).join(", ")}`);
-  console.log(`Owner email: ${OWNER_EMAIL}`);
-  console.log(`Owner phone: ${OWNER_PHONE}`);
-  console.log(`Owner password: ${OWNER_PASSWORD}`);
-  console.log(`Account: ${COMPANY_NAME}`);
+  console.log(`Owner email: ${OWNER.email}`);
+  console.log(`Owner phone: ${OWNER.phone}`);
+  console.log(`Owner password: ${OWNER.password}`);
+  console.log(`Account: ${OWNER.companyName}`);
   console.log(`Primary admin id: ${superAdmin.id}`);
   console.log(
     `Additional reseller customers: ${RESELLER_CUSTOMER_DEFINITIONS.map((item) => item.companyName).join(", ")}`,

@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "./utils/ProtectedRoute";
 import PublicOnlyRoute from "./utils/PublicOnlyRoute";
 
+// Public / marketing
 import Home from "./pages/public/Home";
 import Features from "./pages/public/Features";
 import Pricing from "./pages/public/Pricing";
@@ -15,25 +16,29 @@ import UseCases from "./pages/public/UseCases";
 import Integrations from "./pages/public/Integrations";
 import About from "./pages/public/About";
 import Contact from "./pages/public/Contact";
+import ContactGroups from "./pages/public/ContactGroups";
+import ContactCustomFields from "./pages/public/ContactCustomFields";
 
-import Login from "./pages/auth/Login";
-import Signup from "./pages/auth/Signup";
+// Customer-owner portal
+import Login from "./pages/customer-owner/auth/Login";
+import Signup from "./pages/customer-owner/auth/Signup";
+import AcceptTeamInvite from "./pages/customer-owner/auth/AcceptTeamInvite";
+import Dashboard from "./pages/customer-owner/Dashboard";
+import Inbox from "./pages/customer-owner/Inbox";
+import Contacts from "./pages/customer-owner/Contacts";
+import Broadcasts from "./pages/customer-owner/Broadcasts";
+import Chatbots from "./pages/customer-owner/Chatbots";
+import Analytics from "./pages/customer-owner/Analytics";
+import Settings from "./pages/customer-owner/Settings";
+import Help from "./pages/customer-owner/Help";
+import Templates from "./pages/customer-owner/Templates";
+import TemplateCreate from "./pages/customer-owner/TemplateCreate";
+import Automation from "./pages/customer-owner/Automation";
+import TeamMembers from "./pages/customer-owner/TeamMembers";
+import Billing from "./pages/customer-owner/Billing";
 
-import Index from "./pages/Index";
-import Inbox from "./pages/Inbox";
-import Contacts from "./pages/Contacts";
-import Broadcasts from "./pages/Broadcasts";
-import Chatbots from "./pages/Chatbots";
-import Analytics from "./pages/Analytics";
-import Settings from "./pages/Settings";
-import Help from "./pages/Help";
-import Templates from "./pages/Templates";
-import TemplateCreate from "./pages/TemplateCreate";
-import Automation from "./pages/Automation";
-import TeamMembers from "./pages/TeamMembers";
-import Billing from "./pages/Billing";
-import NotFound from "./pages/NotFound";
-import ResellerLogin from "./pages/reseller/ResellerLogin";
+// Reseller portal
+import ResellerLogin from "./pages/reseller/auth/ResellerLogin";
 import ResellerDashboard from "./pages/reseller/ResellerDashboard";
 import ResellerCustomers from "./pages/reseller/ResellerCustomers";
 import ResellerCustomerCreate from "./pages/reseller/ResellerCustomerCreate";
@@ -50,7 +55,8 @@ import ResellerTeam from "./pages/reseller/ResellerTeam";
 import ResellerTeamList from "./pages/reseller/ResellerTeamList";
 import ResellerSettings from "./pages/reseller/ResellerSettings";
 
-import AdminLogin from "./pages/admin/AdminLogin";
+// Super-admin portal
+import AdminLogin from "./pages/admin/auth/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import ResellerManagement from "./pages/admin/ResellerManagement";
 import UserManagement from "./pages/admin/UserManagement";
@@ -58,8 +64,8 @@ import PlansManagement from "./pages/admin/PlansManagement";
 import MessageLogs from "./pages/admin/MessageLogs";
 import PaymentHistory from "./pages/admin/PaymentHistory";
 import SystemSettings from "./pages/admin/SystemSettings";
-import ContactGroups from "./pages/public/ContactGroups";
-import ContactCustomFields from "./pages/public/ContactCustomFields";
+
+import NotFound from "./pages/NotFound";
 import TemplatePreviewPage from "./components/template/TemplatePreviewPage";
 
 const queryClient = new QueryClient();
@@ -72,6 +78,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Public marketing */}
             <Route path="/home" element={<Home />} />
             <Route path="/features" element={<Features />} />
             <Route path="/pricing" element={<Pricing />} />
@@ -82,16 +89,12 @@ const App = () => (
             <Route path="/contact-groups" element={<ContactGroups />} />
             <Route path="/contact-custom-fields" element={<ContactCustomFields />} />
 
+            {/* Customer-owner auth */}
             <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
             <Route path="/signup" element={<PublicOnlyRoute><Signup /></PublicOnlyRoute>} />
-            <Route
-              path="/admin/login"
-              element={
-                <PublicOnlyRoute portal="admin">
-                  <AdminLogin />
-                </PublicOnlyRoute>
-              }
-            />
+            <Route path="/team/invite/:token" element={<AcceptTeamInvite />} />
+
+            {/* Reseller auth */}
             <Route
               path="/reseller/login"
               element={
@@ -101,7 +104,18 @@ const App = () => (
               }
             />
 
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            {/* Super-admin auth */}
+            <Route
+              path="/admin/login"
+              element={
+                <PublicOnlyRoute portal="admin">
+                  <AdminLogin />
+                </PublicOnlyRoute>
+              }
+            />
+
+            {/* Customer-owner dashboard */}
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/inbox" element={<ProtectedRoute><Inbox /></ProtectedRoute>} />
             <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
             <Route path="/templates/preview/:id" element={<TemplatePreviewPage />} />
@@ -115,6 +129,8 @@ const App = () => (
             <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+
+            {/* Reseller dashboard */}
             <Route
               path="/reseller"
               element={
@@ -236,6 +252,7 @@ const App = () => (
               }
             />
 
+            {/* Super-admin dashboard */}
             <Route path="/admin" element={<ProtectedRoute portal="admin"><AdminDashboard /></ProtectedRoute>} />
             <Route path="/admin/resellers" element={<ProtectedRoute portal="admin"><ResellerManagement /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute portal="admin"><UserManagement /></ProtectedRoute>} />

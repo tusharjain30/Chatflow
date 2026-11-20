@@ -9,7 +9,8 @@ const router = express.Router();
 router.get("/", async (req, res) => {
     try {
 
-        const userId = req.apiContext.userId;
+        const accountId =
+          req.apiContext?.accountId || req.auth?.accountId;
 
         const {
             page = 1,
@@ -23,7 +24,7 @@ router.get("/", async (req, res) => {
         const skip = (page - 1) * limit;
 
         const where = {
-            userId,
+            accountId,
             isDeleted: false,
             ...(typeof isActive === "boolean" && { isActive }),
             ...(botType && { botType }),

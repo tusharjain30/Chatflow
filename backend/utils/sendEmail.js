@@ -10,7 +10,7 @@ const sendEmail = async (to, subject, html) => {
   });
 
   await transporter.sendMail({
-    from: "SaaS Platform VIS",
+    from: `"ChatFlow" <${process.env.SMTP_USER}>`,
     to,
     subject,
     html,

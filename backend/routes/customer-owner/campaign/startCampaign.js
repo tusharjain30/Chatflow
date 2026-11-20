@@ -5,6 +5,8 @@ const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
 const RESPONSE_CODES = require("../../../config/responseCode");
+const { enqueueCampaignBatches } = require("../../../queue");
+const { emitToAccount } = require("../../../socket");
 
 router.post("/", async (req, res) => {
   try {
@@ -123,7 +125,7 @@ router.post("/", async (req, res) => {
       });
     }
 
-    await prisma.$transaction(async (tx) => {
+    const createdJobs = await prisma.$transaction(async (tx) => {
       await tx.campaignJob.deleteMany({
         where: {
           campaignId,
@@ -132,6 +134,16 @@ router.post("/", async (req, res) => {
 
       await tx.campaignJob.createMany({
         data: jobs,
+      });
+
+      const persisted = await tx.campaignJob.findMany({
+        where: { campaignId },
+        orderBy: { batchNumber: "asc" },
+        select: {
+          id: true,
+          batchNumber: true,
+          totalRecords: true,
+        },
       });
 
       await tx.campaign.update({
@@ -147,9 +159,50 @@ router.post("/", async (req, res) => {
         data: {
           campaignId,
           type: "INFO",
-          message: `Campaign started with ${audienceCount} contacts in ${totalBatches} batches`,
+          message: `Campaign started with ${audienceCount} contacts in ${totalBatches} batches (BullMQ)`,
         },
       });
+
+      return persisted;
+    });
+
+    try {
+      await enqueueCampaignBatches({
+        campaignId,
+        accountId,
+        jobs: createdJobs,
+        delayInSeconds: campaign.delayInSeconds || 2,
+      });
+    } catch (queueError) {
+      console.error("Campaign queue enqueue failed:", queueError);
+      await prisma.campaign.update({
+        where: { id: campaignId },
+        data: { status: "FAILED" },
+      });
+      await prisma.campaignLog.create({
+        data: {
+          campaignId,
+          type: "ERROR",
+          message:
+            queueError.message ||
+            "Failed to enqueue campaign batches (is Redis running?)",
+        },
+      });
+
+      return res.status(RESPONSE_CODES.ERROR).json({
+        status: 0,
+        message:
+          "Campaign could not be queued. Ensure Redis is running and try again.",
+        statusCode: RESPONSE_CODES.ERROR,
+        data: {},
+      });
+    }
+
+    emitToAccount(accountId, "campaign:status", {
+      campaignId,
+      status: "RUNNING",
+      totalAudience: audienceCount,
+      totalBatches,
     });
 
     return res.status(RESPONSE_CODES.POST).json({

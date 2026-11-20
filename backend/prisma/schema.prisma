@@ -134,6 +134,16 @@ model CustomerAccount {
   resellerId  String?
   creditBalance Float @default(0)
 
+  // Organization / general settings
+  address                   String?
+  city                      String?
+  state                     String?
+  zipCode                   String?
+  country                   String?
+  timezone                  String  @default("UTC")
+  notificationSoundEnabled  Boolean @default(false)
+  campaignResendEnabled     Boolean @default(false)
+
   isActive        Boolean @default(true)
   isDeleted       Boolean @default(false)
   lifecycleStatus CustomerLifecycleStatus @default(ACTIVE)
@@ -158,6 +168,8 @@ model CustomerAccount {
   webhookEvents      WebhookEvent[]
   campaigns          Campaign[]
   billingTransactions BillingTransaction[]
+  supportTickets     SupportTicket[]
+  developerWebhooks  DeveloperWebhook[]
 
   @@index([resellerId, lifecycleStatus, isDeleted])
 }
@@ -616,8 +628,10 @@ model AccessToken {
   id     String @id @default(uuid())
   userId String
 
-  tokenHash String // hash of the JWT
-  service   ServiceType // TEMPLATE, BOT, MESSAGE etc
+  tokenHash    String // hash or stored token value
+  tokenPreview String? // last characters for UI masking
+  label        String?
+  service      ServiceType // TEMPLATE, BOT, MESSAGE etc
 
   limitValue Int? // e.g. max templates = 5
   usedValue  Int  @default(0) // optional, DB truth
@@ -629,6 +643,25 @@ model AccessToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([userId, service, isActive])
+}
+
+model DeveloperWebhook {
+  id        String @id @default(uuid())
+  accountId String
+  account   CustomerAccount @relation(fields: [accountId], references: [id])
+
+  url    String
+  events String[]
+
+  isActive  Boolean @default(true)
+  isDeleted Boolean @default(false)
+
+  createdByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([accountId, isDeleted, createdAt])
 }
 
 model Contact {
@@ -1059,4 +1092,50 @@ enum JobStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+model SupportTicket {
+  id          String @id @default(uuid())
+  accountId   String
+  account     CustomerAccount @relation(fields: [accountId], references: [id])
+
+  ref         String
+  subject     String
+  description String
+  category    SupportTicketCategory
+  priority    SupportTicketPriority @default(NOT_SET)
+  status      SupportTicketStatus   @default(OPEN)
+
+  createdByUserId String?
+
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([accountId, ref])
+  @@index([accountId, isDeleted, createdAt])
+  @@index([accountId, status])
+}
+
+enum SupportTicketCategory {
+  WHATSAPP_ISSUE
+  BILLING
+  ACCOUNT_ACCESS
+  CAMPAIGNS
+  OTHER
+}
+
+enum SupportTicketPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  NOT_SET
+}
+
+enum SupportTicketStatus {
+  OPEN
+  RESOLVED
+  CLOSED
 }

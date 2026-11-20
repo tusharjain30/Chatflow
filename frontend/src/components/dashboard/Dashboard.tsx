@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getAuthToken } from "@/utils/authStorage";
 import {
   ArrowLeftRight,
@@ -11,6 +12,7 @@ import {
   Megaphone,
   Bot,
   TrendingUp,
+  Smartphone,
 } from "lucide-react";
 import { MetricCard } from "./MetricCard";
 import { ConversationItem } from "./ConversationItem";
@@ -65,6 +67,7 @@ type DashboardStats = {
 };
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const {
     isImpersonatingCustomer,
     restoreSupportSession,
@@ -234,24 +237,35 @@ export function Dashboard() {
                 <h2 className="text-lg font-semibold mb-4">Quick Actions</h2>
                 <div className="space-y-3">
                   <QuickActionCard
+                    icon={Smartphone}
+                    title="Connect WhatsApp"
+                    description="Verify and link your business number"
+                    variant="primary"
+                    onClick={() => navigate("/settings?tab=whatsapp")}
+                  />
+                  <QuickActionCard
                     icon={Megaphone}
                     title="Create Broadcast"
                     description="Send messages to multiple contacts"
+                    onClick={() => navigate("/broadcasts")}
                   />
                   <QuickActionCard
                     icon={UserPlus}
                     title="Import Contacts"
                     description="Upload CSV or Excel"
+                    onClick={() => navigate("/contacts")}
                   />
                   <QuickActionCard
                     icon={Bot}
                     title="Setup Chatbot"
                     description="Automate responses"
+                    onClick={() => navigate("/chatbots")}
                   />
                   <QuickActionCard
                     icon={TrendingUp}
                     title="View Analytics"
                     description="Track performance"
+                    onClick={() => navigate("/analytics")}
                   />
                 </div>
               </section>

@@ -17,12 +17,16 @@ const {
 const {
   messageDetailSchema,
 } = require("../../../../schema/customer-owner/whatsapp/messages/detail.schema");
+const {
+  deleteConversationsSchema,
+} = require("../../../../schema/customer-owner/whatsapp/messages/deleteConversations.schema");
 
 const textMessageRoute = require("./text");
 const sendMediaRoute = require("./sendMedia");
 const sendTemplateRoute = require("./sendTemplate");
 const listRoute = require("./read");
 const detailRoute = require("./detail");
+const deleteConversationsRoute = require("./deleteConversations");
 
 router.use(
   "/send-text",
@@ -53,6 +57,13 @@ router.use(
   requireAuth,
   validator(messageDetailSchema, "params"),
   detailRoute
+);
+
+router.use(
+  "/delete-conversations",
+  requireAuth,
+  validator(deleteConversationsSchema, "body"),
+  deleteConversationsRoute
 );
 
 module.exports = router;

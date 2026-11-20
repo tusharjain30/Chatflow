@@ -9,13 +9,13 @@ const router = express.Router();
 router.delete("/", async (req, res) => {
     try {
 
-        const userId = req.apiContext.userId;
+        const accountId = req.apiContext?.accountId || req.auth?.accountId;
         const { id } = req.body;
 
         const bot = await prisma.bot.findFirst({
             where: {
                 id,
-                userId,
+                accountId,
                 isDeleted: false
             }
         });

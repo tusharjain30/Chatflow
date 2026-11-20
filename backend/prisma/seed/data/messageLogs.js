@@ -1,0 +1,61 @@
+const MESSAGE_LOG_DEFINITIONS = [
+  {
+    metaMessageId: "wamid.seed.outbound.001",
+    to: "919810000001",
+    fromOwner: true,
+    type: "TEMPLATE",
+    direction: "OUTBOUND",
+    templateName: "welcome_offer_template",
+    payload: {
+      to: "919810000001",
+      template: "welcome_offer_template",
+      variables: ["Rahul"],
+    },
+    status: "DELIVERED",
+    conversationId: "seed-conversation-rahul",
+    messageText: "Welcome offer sent to Rahul",
+    price: 0.82,
+    currency: "INR",
+    createdAt: new Date("2026-04-18T09:30:00.000Z"),
+  },
+  {
+    metaMessageId: "wamid.seed.inbound.001",
+    toOwner: true,
+    from: "919810000001",
+    type: "TEXT",
+    direction: "INBOUND",
+    templateName: null,
+    payload: {
+      from: "919810000001",
+      text: "I want to talk to an advisor",
+    },
+    status: "READ",
+    conversationId: "seed-conversation-rahul",
+    messageText: "I want to talk to an advisor",
+    price: null,
+    currency: null,
+    createdAt: new Date("2026-04-18T09:32:00.000Z"),
+  },
+  {
+    metaMessageId: "wamid.seed.outbound.002",
+    to: "919810000002",
+    fromOwner: true,
+    type: "TEXT",
+    direction: "OUTBOUND",
+    templateName: null,
+    payload: {
+      to: "919810000002",
+      text: "Your onboarding checklist is ready.",
+    },
+    status: "SENT",
+    conversationId: "seed-conversation-priya",
+    messageText: "Your onboarding checklist is ready.",
+    price: 0.21,
+    currency: "INR",
+    createdAt: new Date("2026-04-19T14:15:00.000Z"),
+  },
+];
+
+module.exports = {
+  MESSAGE_LOG_DEFINITIONS,
+};

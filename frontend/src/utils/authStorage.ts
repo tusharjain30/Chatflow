@@ -47,15 +47,31 @@ export function migrateLegacyAuthStorage(): void {
 
 export function getAuthToken(portal?: Portal): string | null {
   const resolved = portal ?? resolvePortalFromPath();
-  return localStorage.getItem(TOKEN_KEYS[resolved]);
+  const key = TOKEN_KEYS[resolved];
+  return localStorage.getItem(key) || sessionStorage.getItem(key);
 }
 
-export function setAuthToken(portal: Portal, token: string): void {
-  localStorage.setItem(TOKEN_KEYS[portal], token);
+export function setAuthToken(
+  portal: Portal,
+  token: string,
+  rememberMe = true,
+): void {
+  const key = TOKEN_KEYS[portal];
+
+  if (rememberMe) {
+    sessionStorage.removeItem(key);
+    localStorage.setItem(key, token);
+    return;
+  }
+
+  localStorage.removeItem(key);
+  sessionStorage.setItem(key, token);
 }
 
 export function clearAuthToken(portal: Portal): void {
-  localStorage.removeItem(TOKEN_KEYS[portal]);
+  const key = TOKEN_KEYS[portal];
+  localStorage.removeItem(key);
+  sessionStorage.removeItem(key);
 }
 
 export function clearAuthSession(portal: Portal): void {
@@ -63,6 +79,7 @@ export function clearAuthSession(portal: Portal): void {
   // Legacy key used by older customer flows
   if (portal === "user") {
     localStorage.removeItem("user");
+    sessionStorage.removeItem("user");
   }
 }
 

@@ -9,13 +9,14 @@ const router = express.Router();
 router.patch("/", async (req, res) => {
     try {
 
-        const userId = req.apiContext.userId;
+        const accountId = req.apiContext?.accountId || req.auth?.accountId;
+        const userId = req.apiContext?.userId || req.auth?.userId;
         const { id, isActive } = req.body;
 
         const bot = await prisma.bot.findFirst({
             where: {
                 id,
-                userId,
+                accountId,
                 isDeleted: false
             }
         });
@@ -45,7 +46,7 @@ router.patch("/", async (req, res) => {
         ) {
             const existing = await prisma.bot.findFirst({
                 where: {
-                    userId,
+                    accountId,
                     triggerType: bot.triggerType,
                     isActive: true,
                     isDeleted: false,
@@ -72,14 +73,14 @@ router.patch("/", async (req, res) => {
 
             // Update all replies
             await tx.botReply.updateMany({
-                where: { id, isDeleted: false },
+                where: { botId: id, isDeleted: false },
                 data: { isActive },
             });
 
             // Close sessions if deactivating
             if (!isActive) {
                 await tx.botSession.updateMany({
-                    where: { id, isActive: true },
+                    where: { botId: id, isActive: true },
                     data: { isActive: false },
                 });
             }

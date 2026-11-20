@@ -9,6 +9,8 @@ const profileRoutes = require("./profile");
 const resellerRoutes = require("./reseller");
 const toolsRoutes = require("./tools");
 const rollRoutes = require("./role");
+const overviewRoutes = require("./overview");
+const tenantsRoutes = require("./tenants");
 
 router.use("/auth", authRoutes);
 router.use("/invoices", invoiceRoutes);
@@ -19,5 +21,7 @@ router.use("/profile", profileRoutes);
 router.use("/resellers", resellerRoutes);
 router.use("/tools", toolsRoutes);
 router.use("/roles", rollRoutes);
+router.use("/overview", overviewRoutes);
+router.use("/tenants", tenantsRoutes);
 
 module.exports = router;

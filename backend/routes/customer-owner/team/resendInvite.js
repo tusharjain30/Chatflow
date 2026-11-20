@@ -66,21 +66,29 @@ router.post("/", async (req, res) => {
     // =========================
     // Prepare email
     // =========================
-    const frontendBaseUrl = process.env.FRONTEND_URL;
+    const frontendBaseUrl = process.env.FRONTEND_URL || "http://localhost:8080";
     const inviteUrl = `${frontendBaseUrl}/team/invite/${newToken}`;
+    const roleLabel =
+      invite.roleType === "CUSTOMER_ADMIN" ? "Admin" : "Agent";
 
     let emailSent = true;
 
     try {
       await sendEmail(
         invite.email,
-        "Team Invitation (Resent)",
+        "ChatFlow Team Invitation (Resent)",
         `
-        <div style="font-family: Arial, sans-serif;">
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
           <h2>Invitation Reminder</h2>
-          <p>You have been invited as <strong>${invite.roleType}</strong>.</p>
-          <p>New expiry: <strong>${newExpiry.toUTCString()}</strong></p>
-          <a href="${inviteUrl}">Accept Invitation</a>
+          <p>You have been invited to join ChatFlow as <strong>${roleLabel}</strong>.</p>
+          <p>This invitation will expire on <strong>${newExpiry.toUTCString()}</strong>.</p>
+          <p>
+            <a href="${inviteUrl}" style="display: inline-block; padding: 10px 16px; background: #16a34a; color: #ffffff; text-decoration: none; border-radius: 6px;">
+              Accept Invitation
+            </a>
+          </p>
+          <p>If the button does not work, use this link:</p>
+          <p><a href="${inviteUrl}">${inviteUrl}</a></p>
         </div>
         `,
       );

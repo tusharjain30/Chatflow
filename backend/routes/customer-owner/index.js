@@ -9,6 +9,8 @@ const profileRoutes = require("./profile");
 const teamRoutes = require("./team");
 const accountRoutes = require("./account");
 const campaignRoutes = require("./campaign");
+const supportRoutes = require("./support");
+const developerRoutes = require("./developer");
 
 router.use("/auth", authRoutes);
 router.use("/whatsapp", whatsappRoutes);
@@ -19,5 +21,7 @@ router.use("/profile", profileRoutes);
 router.use("/team", teamRoutes);
 router.use("/account", accountRoutes);
 router.use("/campaign", campaignRoutes);
+router.use("/support", supportRoutes);
+router.use("/developer", developerRoutes);
 
 module.exports = router;

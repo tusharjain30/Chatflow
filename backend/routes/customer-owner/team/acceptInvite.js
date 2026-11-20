@@ -44,9 +44,13 @@ router.post("/", async (req, res) => {
     }
 
     const normalizedEmail = invite.email;
-    const baseUsername = normalizedEmail.split("@")[0];
+    const baseUsername = normalizedEmail
+      .split("@")[0]
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "")
+      .slice(0, 16);
 
-    const userName = `${baseUsername}}`;
+    const userName = `${baseUsername}_${Date.now().toString().slice(-4)}`;
 
     // =========================
     // Check if user already exists (global)

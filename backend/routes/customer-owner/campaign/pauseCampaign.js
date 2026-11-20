@@ -5,6 +5,8 @@ const { PrismaClient } = require("../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
 const RESPONSE_CODES = require("../../../config/responseCode");
+const { removeCampaignQueueJobs } = require("../../../queue");
+const { emitToAccount } = require("../../../socket");
 
 router.post("/", async (req, res) => {
   try {
@@ -70,9 +72,8 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // =========================
-    // Update Campaign
-    // =========================
+    await removeCampaignQueueJobs(campaignId);
+
     await prisma.campaign.update({
       where: {
         id: campaignId,
@@ -82,12 +83,29 @@ router.post("/", async (req, res) => {
       },
     });
 
+    await prisma.campaignJob.updateMany({
+      where: {
+        campaignId,
+        status: { in: ["PENDING", "PROCESSING"] },
+      },
+      data: {
+        status: "FAILED",
+        errorMessage: "Paused by user",
+        completedAt: new Date(),
+      },
+    });
+
     await prisma.campaignLog.create({
       data: {
         campaignId,
         type: "INFO",
         message: "Campaign paused by user",
       },
+    });
+
+    emitToAccount(accountId, "campaign:status", {
+      campaignId,
+      status: "PAUSED",
     });
 
     return res.status(RESPONSE_CODES.GET).json({

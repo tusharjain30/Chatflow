@@ -1,0 +1,9 @@
+phone,firstName,lastName,email,country,languageCode,isOptedOut
+9012345678,Arjun,Mehta,arjun.mehta@example.com,India,en,false
+9871203456,Pooja,Singh,pooja.singh@example.com,India,hi,false
+9987654321,Karan,Malhotra,karan.m@example.com,India,en,false
+9123409876,Sneha,Patil,,India,en,false
+9898989898,Riya,Kapoor,riya.kapoor@example.com,India,en,true
+9011122233,Vikram,Joshi,,India,hi,false
+9345678901,Anjali,Desai,anjali.desai@example.com,India,en,false
+9876541200,Rohit,Agarwal,rohit.ag@example.com,India,en,false

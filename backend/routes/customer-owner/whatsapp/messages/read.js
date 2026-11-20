@@ -32,12 +32,37 @@ router.get("/", async (req, res) => {
     if (direction) where.direction = direction;
     if (conversationId) where.conversationId = conversationId;
 
-    if (search) {
+    const searchTerm = String(search || "").trim();
+    if (searchTerm) {
+      const matchingContacts = await prisma.contact.findMany({
+        where: {
+          accountId,
+          isDeleted: false,
+          OR: [
+            { firstName: { contains: searchTerm, mode: "insensitive" } },
+            { lastName: { contains: searchTerm, mode: "insensitive" } },
+            { phone: { contains: searchTerm } },
+            { email: { contains: searchTerm, mode: "insensitive" } },
+          ],
+        },
+        select: { phone: true },
+        take: 100,
+      });
+
+      const contactPhones = matchingContacts
+        .map((contact) => contact.phone)
+        .filter(Boolean);
+
       where.OR = [
-        { to: { contains: search } },
-        { from: { contains: search } },
-        { messageText: { contains: search, mode: "insensitive" } },
-        { templateName: { contains: search, mode: "insensitive" } },
+        { to: { contains: searchTerm } },
+        { from: { contains: searchTerm } },
+        { messageText: { contains: searchTerm, mode: "insensitive" } },
+        { templateName: { contains: searchTerm, mode: "insensitive" } },
+        { conversationId: { contains: searchTerm } },
+        ...contactPhones.flatMap((phone) => [
+          { to: { contains: phone } },
+          { from: { contains: phone } },
+        ]),
       ];
     }
 

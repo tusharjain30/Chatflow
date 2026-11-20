@@ -2,6 +2,7 @@ const { PrismaClient } = require("../../../../generated/prisma/client");
 const prisma = new PrismaClient();
 
 const sendWhatsAppMessage = require("../../../../services/Meta/sendMessage");
+const { emitToAccount } = require("../../../../socket");
 
 const {
   buildTextPayload,
@@ -95,7 +96,7 @@ module.exports = async (req, res) => {
     });
 
     /* ---------- LOG INBOUND ---------- */
-    await prisma.messageLog.create({
+    const inboundLog = await prisma.messageLog.create({
       data: {
         accountId: user.accountId,
         sentByUserId: null, // inbound
@@ -105,6 +106,15 @@ module.exports = async (req, res) => {
         direction: "INBOUND",
         payload: message,
       },
+    });
+
+    emitToAccount(user.accountId, "chat:message", {
+      id: inboundLog.id,
+      from,
+      type: message.type,
+      text: text || null,
+      direction: "INBOUND",
+      createdAt: inboundLog.createdAt,
     });
 
     /* ---------- ACTIVE BOT ---------- */

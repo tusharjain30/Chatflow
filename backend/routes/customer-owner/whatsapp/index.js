@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const VerifyWhatsappNumberRoutes = require("./VerifyWhatsappNumber");
+const connectRoutes = require("./connect");
 const createApiRoutes = require("./create-api");
 const templateRoutes = require("./template");
 const webhookRoutes = require("./meta-webhooks");
@@ -10,6 +11,7 @@ const botFlowRoutes = require("./bot-flows");
 const messageRoutes = require("./messages");
 
 router.use("/verify-whatsapp-number", VerifyWhatsappNumberRoutes);
+router.use("/connect", connectRoutes);
 router.use("/create", createApiRoutes);
 router.use("/template", templateRoutes);
 router.use("/meta", webhookRoutes);

@@ -18,6 +18,9 @@ const {
   resendInviteSchema,
 } = require("../../../schema/customer-owner/team/resendInvite.schema");
 const {
+  cancelInviteSchema,
+} = require("../../../schema/customer-owner/team/cancelInvite.schema");
+const {
   updateMemberSchema,
 } = require("../../../schema/customer-owner/team/updateMember.schema");
 const {
@@ -34,7 +37,9 @@ const { bulkDeleteMembersSchema } = require("../../../schema/customer-owner/team
 const inviteMemberRoute = require("./inviteMember");
 const acceptInviteRoute = require("./acceptInvite");
 const listMembersRoute = require("./listMembers");
+const listInvitesRoute = require("./listInvites");
 const resendInviteRoute = require("./resendInvite");
+const cancelInviteRoute = require("./cancelInvite");
 const updateMemberRoute = require("./updateMember");
 const memberDetailRoute = require("./memberDetail");
 const toggleStatusRoute = require("./toggleStatus");
@@ -64,12 +69,22 @@ router.use(
   listMembersRoute,
 );
 
+router.use("/list-invites", requireAuth, requireOwner, listInvitesRoute);
+
 router.use(
   "/resend-invite",
   requireAuth,
   requireOwner,
   validator(resendInviteSchema, "body"),
   resendInviteRoute,
+);
+
+router.use(
+  "/cancel-invite",
+  requireAuth,
+  requireOwner,
+  validator(cancelInviteSchema, "body"),
+  cancelInviteRoute,
 );
 
 router.use(
